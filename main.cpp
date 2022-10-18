@@ -141,6 +141,7 @@ namespace detail {
 
         using iterator = array_iterator<TValue>;
         using const_iterator = array_iterator<const TValue>;
+
     private:
         using allocator = typename std::allocator_traits<Allocator>::template rebind_alloc<TValue>;
         using size_type = typename std::allocator_traits<allocator>::size_type;
@@ -163,6 +164,23 @@ namespace detail {
             for (size_type i = 0; i < size_; ++i) {
                 try {
                     allocator_traits::construct(allocator_, data_ + i);
+                } catch (...) {
+                    for (int j = 0; j < i; ++j) {
+                        allocator_traits::destroy(allocator_, data_ + j);
+                    }
+                    allocator_traits::deallocate(allocator_, data_, size_);
+                    throw;
+                }
+            }
+        }
+
+         array(size_type size, const_reference default_value)
+                :
+                size_(size) {
+            data_ = allocator_traits::allocate(allocator_, size_);
+            for (size_type i = 0; i < size_; ++i) {
+                try {
+                    allocator_traits::construct(allocator_, data_ + i, default_value);
                 } catch (...) {
                     for (int j = 0; j < i; ++j) {
                         allocator_traits::destroy(allocator_, data_ + j);
@@ -209,15 +227,29 @@ namespace detail {
             }
         }
 
-        void resize(size_type size);
+        void resize(size_type new_size);
 
-        TValue &operator[](size_type index);
+        void resize(size_type new_size, const_reference default_value);
 
-        const TValue &operator[](size_type index) const;
+        TValue &operator[](size_type index) {
+            assert(index < size_);
+            return data_[index];
+        }
 
-        TValue &at(size_type index);
+        const TValue &operator[](size_type index) const {
+            assert(index < size_);
+            return data_[index];
+        }
 
-        const TValue &at(size_type index) const;
+        TValue &at(size_type index) {
+            assert(index < size_);
+            return data_[index];
+        }
+
+        const TValue &at(size_type index) const {
+            assert(index < size_);
+            return data_[index];
+        }
 
         bool empty() const {
             return size_ == 0;
@@ -226,6 +258,60 @@ namespace detail {
         size_type size() const {
             return size_;
         }
+
+    private:
+        template<typename TItem>
+        class array_iterator {
+            friend class array;
+
+        private:
+            pointer data_;
+
+            explicit array_iterator(pointer data)
+                    :
+                    data_(data) {}
+
+        public:
+            using iterator_category = std::contiguous_iterator_tag;
+            using value_type = TItem;
+            using element_type = TItem;
+            using difference_type = std::ptrdiff_t;
+            using reference = value_type &;
+            using pointer = value_type *;
+
+            array_iterator(const array_iterator &other)
+                    :
+                    data_(other.data_) {}
+
+
+            array_iterator &operator=(const array_iterator &other) {
+                data_ = other.data_;
+            }
+
+            array_iterator &operator++() {
+                ++data_;
+                return *this;
+            }
+
+            array_iterator operator++(int) {
+                array_iterator result = *this;
+                ++data_;
+                return result;
+            }
+
+            array_iterator &operator--() {
+                --data_;
+                return *this;
+            }
+
+            array_iterator operator--(int) {
+                array_iterator result = *this;
+                --data_;
+                return result;
+            }
+
+
+        };
     };
 
     // base for hash set and hash map

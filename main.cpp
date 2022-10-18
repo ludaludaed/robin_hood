@@ -180,7 +180,7 @@ namespace detail {
             data_ = allocator_traits::allocate(allocator_, size_);
             for (size_type i = 0; i < size_; ++i) {
                 try {
-                    allocator_traits::construct(allocator_, data_ + i, std::move_if_noexcept(other.data_[i]));
+                    allocator_traits::construct(allocator_, data_ + i, other.data_[i]);
                 } catch (...) {
                     for (int j = 0; j < i; ++j) {
                         allocator_traits::destroy(allocator_, data_ + j);

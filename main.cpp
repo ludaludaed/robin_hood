@@ -165,7 +165,7 @@ namespace detail {
                 try {
                     allocator_traits::construct(allocator_, data_ + i);
                 } catch (...) {
-                    for (int j = 0; j < i; ++j) {
+                    for (size_type j = 0; j < i; ++j) {
                         allocator_traits::destroy(allocator_, data_ + j);
                     }
                     allocator_traits::deallocate(allocator_, data_, size_);
@@ -182,7 +182,7 @@ namespace detail {
                 try {
                     allocator_traits::construct(allocator_, data_ + i, default_value);
                 } catch (...) {
-                    for (int j = 0; j < i; ++j) {
+                    for (size_type j = 0; j < i; ++j) {
                         allocator_traits::destroy(allocator_, data_ + j);
                     }
                     allocator_traits::deallocate(allocator_, data_, size_);
@@ -200,7 +200,7 @@ namespace detail {
                 try {
                     allocator_traits::construct(allocator_, data_ + i, other.data_[i]);
                 } catch (...) {
-                    for (int j = 0; j < i; ++j) {
+                    for (size_type j = 0; j < i; ++j) {
                         allocator_traits::destroy(allocator_, data_ + j);
                     }
                     allocator_traits::deallocate(allocator_, data_, size_);
@@ -227,9 +227,54 @@ namespace detail {
             }
         }
 
-        void resize(size_type new_size);
+        void resize(size_type new_size) {
+            resize(new_size, {});
+        }
 
-        void resize(size_type new_size, const_reference default_value);
+        void resize(size_type new_size, const_reference default_value) {
+            if (size_ > new_size) {
+                pointer new_data = allocator_traits::allocate(allocator_, new_size);
+                for (size_type i = 0; i < new_size; ++i) {
+                    try {
+                        allocator_traits::construct(allocator_, new_data + i, std::move_if_noexcept(data_[i]));
+                    } catch (...) {
+                        for (size_type j = 0; j < i; ++j) {
+                            allocator_traits::destroy(allocator_, new_data + j);
+                        }
+                        allocator_traits::deallocate(allocator_, new_data, new_size);
+                        throw;
+                    }
+                }
+                for (size_type i = 0; i < size_; ++i) {
+                    allocator_traits::destroy(allocator_, data_ + i);
+                }
+                allocator_traits::deallocate(allocator_, data_, size_);
+                size_ = new_size;
+                data_ = new_data;
+            } else if (size_ < new_size) {
+                pointer new_data = allocator_traits::allocate(allocator_, new_size);
+                for (size_type i = 0; i < size_; ++i) {
+                    try {
+                        allocator_traits::construct(allocator_, new_data + i, std::move_if_noexcept(data_[i]));
+                    } catch (...) {
+                        for (size_type j = 0; j < i; ++j) {
+                            allocator_traits::destroy(allocator_, new_data + j);
+                        }
+                        allocator_traits::deallocate(allocator_, new_data, new_size);
+                        throw;
+                    }
+                }
+                for (size_type i = size_; i < new_size; ++i) {
+                    allocator_traits::construct(allocator_, new_data + i, default_value);
+                }
+                for (size_type i = 0; i < size_; ++i) {
+                    allocator_traits::destroy(allocator_, data_ + i);
+                }
+                allocator_traits::deallocate(allocator_, data_, size_);
+                size_ = new_size;
+                data_ = new_data;
+            }
+        }
 
         TValue &operator[](size_type index) {
             assert(index < size_);
@@ -503,14 +548,13 @@ std::ostream &operator<<(std::ostream &stream, A &data) {
 
 int main() {
     static_assert(std::random_access_iterator<detail::array<int>::const_iterator>);
-    detail::node<A> node1;
-    node1.set_data(1, 1, "11111");
-    detail::node<A> node2(node1);
-
-    node2.set_data(1, 1, "22222");
-
-    node1.swap(node2);
-
-    std::cout << node1.value() << " " << node2.value();
+    detail::array<int> array(10);
+    for (auto &item: array) {
+        item = 10;
+    }
+    array.resize(5, 9);
+    for (const auto &item: array) {
+        std::cout << item << " ";
+    }
     return 0;
 }

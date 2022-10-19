@@ -569,7 +569,7 @@ namespace detail {
         }
 
         void _shift_down(size_type index) {
-            while (_distance_to_ideal_bucket(index + 1) != 0 || !data_[index + 1].empty()) {
+            while (!data_[index + 1].empty() && _distance_to_ideal_bucket(index + 1) != 0) {
                 data_[index] = std::move(data_[index + 1]);
                 index++;
             }

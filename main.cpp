@@ -556,6 +556,7 @@ namespace detail {
         size_type size_{0};
         array<node, node_allocator> data_;
 
+    private:
         size_type hash_to_index(size_t hash) const {
             return hash % size_;
         }
@@ -622,6 +623,13 @@ std::ostream &operator<<(std::ostream &stream, A &data) {
 int main() {
     static_assert(std::random_access_iterator<detail::array<int>::const_iterator>);
     {
+        detail::node<A> node1;
+        node1.set_data(1, "11111");
+        detail::node<A> node2(node1);
+        node2.set_data(1, "22222");
+        node1.swap(node2);
+        std::cout << node1.value() << " " << node2.value();
+
         detail::array<int> array;
         array.resize(3);
         for (auto &item: array) {

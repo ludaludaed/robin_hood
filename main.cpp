@@ -548,7 +548,8 @@ std::ostream &operator<<(std::ostream &stream, A &data) {
 
 int main() {
     static_assert(std::random_access_iterator<detail::array<int>::const_iterator>);
-    detail::array<int> array(10);
+    detail::array<int> array;
+    array.resize(3);
     for (auto &item: array) {
         item = 10;
     }

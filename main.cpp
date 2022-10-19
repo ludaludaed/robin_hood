@@ -143,15 +143,18 @@ namespace detail {
         using const_iterator = array_iterator<const TValue>;
 
     private:
-        using allocator = typename std::allocator_traits<Allocator>::template rebind_alloc<TValue>;
-        using size_type = typename std::allocator_traits<allocator>::size_type;
-        using allocator_traits = std::allocator_traits<allocator>;
+        using size_type = typename std::allocator_traits<allocator_type>::size_type;
+        using allocator_traits = std::allocator_traits<allocator_type>;
 
-        allocator allocator_;
+        allocator_type allocator_;
         pointer data_;
         size_type size_;
 
     public:
+        allocator_type get_allocator() const {
+            return allocator_;
+        }
+
         array()
                 :
                 data_(nullptr),
@@ -528,14 +531,19 @@ namespace detail {
         using node = node<TValue>;
         using distance_type = typename node::distance_type;
         using node_allocator = typename std::allocator_traits<allocator_type>::template rebind_alloc<node>;
-        using size_type = typename std::allocator_traits<allocator_type>::size_type;
+        using size_type = typename std::allocator_traits<node_allocator>::size_type;
 
     private:
         float load_factor_{0.5f};
         size_type size_{0};
         array<node, node_allocator> data_;
 
+
     public:
+        allocator_type get_allocator() const {
+            return data_.get_allocator();
+        }
+
         hash_table();
 
         hash_table(const hash_table &other);

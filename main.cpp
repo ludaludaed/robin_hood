@@ -561,7 +561,7 @@ namespace detail {
 
     private:
         size_type hash_to_index(size_t hash) const {
-            return hash % size_;
+            return hash % data_.size();
         }
 
         size_type distance_to_ideal_bucket(size_type index) {

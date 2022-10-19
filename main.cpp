@@ -517,8 +517,7 @@ namespace detail {
     };
 
     // base for hash set and hash map
-    template<
-            class TValue,
+    template<class TValue,
             class KeySelector,
             class KeyHash,
             class KeyEqual,
@@ -547,11 +546,15 @@ namespace detail {
 
     private:
         using node = node<TValue>;
-        using distance_type = typename node::distance_type;
         using node_allocator = typename std::allocator_traits<allocator_type>::template rebind_alloc<node>;
         using size_type = typename std::allocator_traits<node_allocator>::size_type;
 
     private:
+        KeySelector key_selector_{};
+        KeyHash key_hash_{};
+        KeyEqual key_equal_{};
+        GrowPolicy grow_policy_{};
+
         float load_factor_{0.5f};
         size_type size_{0};
         array<node, node_allocator> data_;
@@ -572,6 +575,22 @@ namespace detail {
             }
         }
 
+        size_type find_index(const key_type &key) {
+            size_t hash = key_hash_(key);
+            size_type index = hash_to_index(hash);
+            size_type distance = 0;
+            while (index < data_.size()) {
+                if (data_[index].empty() || distance > distance_to_ideal_bucket(index)) {
+                    return -1;
+                } else if (data_[index].hash() == hash && key_equal_(data_[index], key)) {
+                    return index;
+                }
+                index++;
+                distance++;
+            }
+            return -1;
+        }
+
     public:
         allocator_type get_allocator() const {
             return data_.get_allocator();
@@ -583,10 +602,15 @@ namespace detail {
 
         hash_table(hash_table &&other);
 
-        template<typename Iter>
-        hash_table(Iter begin, Iter end);
+        hash_table &operator=(const hash_table &other);
 
-        ~hash_table();
+        hash_table &operator=(hash_table &&other);
+
+        void clear();
+
+        void swap();
+
+        void reserve();
 
         bool empty() const {
             return size_ == 0;

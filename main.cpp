@@ -33,95 +33,6 @@ namespace detail {
         };
     }
 
-    template<typename TValue>
-    class node {
-    public:
-        using distance_type = int16_t;
-        using hash_type = size_t;
-        using value_type = TValue;
-        using storage = utils::storage<TValue>;
-
-    private:
-        static const distance_type kEmptyDistanceMarker = -1;
-        static const hash_type kDefaultHash = 0;
-
-        distance_type distance_;
-        hash_type hash_;
-        storage value_;
-
-    public:
-        node()
-                :
-                distance_(kEmptyDistanceMarker),
-                hash_(kDefaultHash) {}
-
-        node(const node &other) noexcept(std::is_nothrow_copy_constructible_v<value_type>)
-                :
-                distance_(other.distance_),
-                hash_(other.hash_) {
-            if (!other.empty()) {
-                value_.construct(*other.value_);
-            }
-        }
-
-        node(node &&other) noexcept(std::is_nothrow_move_constructible_v<value_type>)
-                :
-                distance_(other.distance_),
-                hash_(other.hash_) {
-            if (!other.empty()) {
-                value_.construct(std::move(*other.value_));
-            }
-        }
-
-        ~node() {
-            clear();
-        }
-
-        template<typename ...Args>
-        void set_data(distance_type distance, hash_type hash, Args &&...args) {
-            if (!empty()) {
-                clear();
-            }
-            value_.construct(std::forward<Args>(args)...);
-            distance_ = distance;
-            hash_ = hash;
-        }
-
-        void clear() {
-            if (!empty()) {
-                value_.destruct();
-            }
-            distance_ = kEmptyDistanceMarker;
-            hash_ = kDefaultHash;
-        }
-
-        void swap(node &other) {
-            std::swap(*value_, *other.value_);
-            std::swap(hash_, other.hash_);
-            std::swap(distance_, other.distance_);
-        }
-
-        bool empty() const {
-            return distance_ == kEmptyDistanceMarker;
-        }
-
-        distance_type distance() const {
-            return distance_;
-        }
-
-        hash_type hash() const {
-            return hash_;
-        }
-
-        const value_type &value() const {
-            return *value_;
-        }
-
-        value_type &value() {
-            return *value_;
-        }
-    };
-
     template<typename TValue, typename Allocator = std::allocator<TValue>>
     class array {
         static_assert(std::is_trivially_constructible_v<TValue>);
@@ -498,6 +409,113 @@ namespace detail {
         };
     };
 
+    template<typename TValue>
+    class node {
+    public:
+        using hash_type = size_t;
+        using value_type = TValue;
+        using storage = utils::storage<TValue>;
+
+    private:
+        static const uint8_t kNoEmptyMarker = 0;
+        static const uint8_t kEmptyMarker = 1;
+        static const hash_type kDefaultHash = 0;
+
+        uint8_t empty_;
+        hash_type hash_;
+        storage value_;
+
+    public:
+        node()
+                :
+                empty_(kEmptyMarker),
+                hash_(kDefaultHash) {}
+
+        node(const node &other) noexcept(std::is_nothrow_copy_constructible_v<value_type>)
+                :
+                empty_(other.empty_),
+                hash_(other.hash_) {
+            if (!other.empty()) {
+                value_.construct(*other.value_);
+            }
+        }
+
+        node(node &&other) noexcept(std::is_nothrow_move_constructible_v<value_type>)
+                :
+                empty_(other.empty_),
+                hash_(other.hash_) {
+            if (!other.empty()) {
+                value_.construct(std::move(*other.value_));
+            }
+            other.clear();
+        }
+
+        ~node() {
+            clear();
+        }
+
+        node &operator=(const node &other) {
+            clear();
+            if (!other.empty()) {
+                value_.construct(*other.value_);
+            }
+            hash_ = other.hash_;
+            empty_ = other.empty_;
+            return *this;
+        }
+
+        node &operator=(node &&other) {
+            clear();
+            if (!other.empty()) {
+                value_.construct(std::move(*other.value_));
+            }
+            hash_ = other.hash_;
+            empty_ = other.empty_;
+            other.clear();
+            return *this;
+        }
+
+        template<typename ...Args>
+        void set_data(hash_type hash, Args &&...args) {
+            if (!empty()) {
+                clear();
+            }
+            value_.construct(std::forward<Args>(args)...);
+            empty_ = kNoEmptyMarker;
+            hash_ = hash;
+        }
+
+        void clear() {
+            if (!empty()) {
+                value_.destruct();
+            }
+            empty_ = kEmptyMarker;
+            hash_ = kDefaultHash;
+        }
+
+        void swap(node &other) {
+            std::swap(*value_, *other.value_);
+            std::swap(hash_, other.hash_);
+            std::swap(empty_, other.empty_);
+        }
+
+        bool empty() const {
+            return empty_ == kEmptyMarker;
+        }
+
+        hash_type hash() const {
+            return hash_;
+        }
+
+        const value_type &value() const {
+            return *value_;
+        }
+
+        value_type &value() {
+            return *value_;
+        }
+    };
+
     // base for hash set and hash map
     template<
             class TValue,
@@ -538,6 +556,20 @@ namespace detail {
         size_type size_{0};
         array<node, node_allocator> data_;
 
+        size_type hash_to_index(size_t hash) const {
+            return hash % size_;
+        }
+
+        size_type distance_to_ideal_bucket(size_type index) {
+            return index - hash_to_index(data_[index].hash());
+        }
+
+        void shift_down(size_type index) {
+            while (distance_to_ideal_bucket(index + 1) != 0 || !data_[index + 1].empty()) {
+                data_[index] = std::move(data_[index + 1]);
+                index++;
+            }
+        }
 
     public:
         allocator_type get_allocator() const {

@@ -251,12 +251,36 @@ namespace detail {
             return data_[index];
         }
 
-        bool empty() const {
+        bool empty() const noexcept {
             return size_ == 0;
         }
 
-        size_type size() const {
+        size_type size() const noexcept {
             return size_;
+        }
+
+        iterator begin() noexcept {
+            return iterator(data_);
+        }
+
+        iterator end() noexcept {
+            return iterator(data_ + size_);
+        }
+
+        const_iterator begin() const noexcept {
+            return cbegin();
+        }
+
+        const_iterator end() const noexcept {
+            return cend();
+        }
+
+        const_iterator cbegin() const noexcept {
+            return const_iterator(data_);
+        }
+
+        const_iterator cend() const noexcept {
+            return const_iterator(data_ + size_);
         }
 
     private:
@@ -296,6 +320,7 @@ namespace detail {
                 data_ = other;
             }
 
+        public:
             reference operator*() const {
                 return *data_;
             }
@@ -308,6 +333,7 @@ namespace detail {
                 return data_[index];
             }
 
+        public:
             bool operator==(const array_iterator &other) const {
                 return data_ == other.data_;
             }
@@ -332,6 +358,7 @@ namespace detail {
                 return data_ >= other.data_;
             }
 
+        public:
             array_iterator &operator++() {
                 ++data_;
                 return *this;
@@ -475,7 +502,7 @@ std::ostream &operator<<(std::ostream &stream, A &data) {
 }
 
 int main() {
-    static_assert(std::random_access_iterator<detail::array<int>::iterator>);
+    static_assert(std::random_access_iterator<detail::array<int>::const_iterator>);
     detail::node<A> node1;
     node1.set_data(1, 1, "11111");
     detail::node<A> node2(node1);

@@ -265,9 +265,8 @@ namespace detail {
             friend class array;
 
         public:
-            using iterator_category = std::contiguous_iterator_tag;
+            using iterator_category = std::random_access_iterator_tag;
             using value_type = TItem;
-            using element_type = TItem;
             using difference_type = std::ptrdiff_t;
             using reference = value_type &;
             using pointer = value_type *;
@@ -476,7 +475,7 @@ std::ostream &operator<<(std::ostream &stream, A &data) {
 }
 
 int main() {
-    static_assert(std::contiguous_iterator<detail::array<int>::iterator>);
+    static_assert(std::random_access_iterator<detail::array<int>::iterator>);
     detail::node<A> node1;
     node1.set_data(1, 1, "11111");
     detail::node<A> node2(node1);

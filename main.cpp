@@ -226,20 +226,17 @@ namespace detail {
         }
 
         array &operator=(const array &other) {
-            pointer new_data = nullptr;
             size_type new_size = other.size_;
-            if (other.data_ != nullptr) {
-                new_data = allocator_traits::allocate(allocator_, new_size);
-                for (size_type i = 0; i < new_size; ++i) {
-                    try {
-                        allocator_traits::construct(allocator_, new_data + i, other.data_[i]);
-                    } catch (...) {
-                        for (size_type j = 0; j < i; ++j) {
-                            allocator_traits::destroy(allocator_, new_data + j);
-                        }
-                        allocator_traits::deallocate(allocator_, new_data, new_size);
-                        throw;
+            pointer new_data = allocator_traits::allocate(allocator_, new_size);
+            for (size_type i = 0; i < new_size; ++i) {
+                try {
+                    allocator_traits::construct(allocator_, new_data + i, other.data_[i]);
+                } catch (...) {
+                    for (size_type j = 0; j < i; ++j) {
+                        allocator_traits::destroy(allocator_, new_data + j);
                     }
+                    allocator_traits::deallocate(allocator_, new_data, new_size);
+                    throw;
                 }
             }
             for (size_type i = 0; i < size_; ++i) {
@@ -268,14 +265,7 @@ namespace detail {
         }
 
         void resize(size_type new_size, const_reference default_value) {
-            if (new_size == 0) {
-                for (size_type i = 0; i < size_; ++i) {
-                    allocator_traits::destroy(allocator_, data_ + i);
-                }
-                allocator_traits::deallocate(allocator_, data_, size_);
-                size_ = new_size;
-                data_ = nullptr;
-            } else if (size_ > new_size) {
+            if (size_ > new_size) {
                 pointer new_data = allocator_traits::allocate(allocator_, new_size);
                 for (size_type i = 0; i < new_size; ++i) {
                     try {
@@ -601,10 +591,13 @@ int main() {
         for (const auto &item: array) {
             std::cout << item << " ";
         }
-        array.resize(0, 9);
+        array.resize(100, 9);
         for (const auto &item: array) {
             std::cout << item << " ";
         }
+
+        detail::array<int> a;
+        a = array;
     }
     return 0;
 }

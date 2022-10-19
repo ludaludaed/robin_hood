@@ -174,7 +174,7 @@ namespace detail {
             }
         }
 
-         array(size_type size, const_reference default_value)
+        array(size_type size, const_reference default_value)
                 :
                 size_(size) {
             data_ = allocator_traits::allocate(allocator_, size_);
@@ -264,6 +264,13 @@ namespace detail {
         class array_iterator {
             friend class array;
 
+        public:
+            using iterator_category = std::random_access_iterator_tag;
+            using value_type = TItem;
+            using difference_type = std::ptrdiff_t;
+            using reference = value_type &;
+            using pointer = value_type *;
+
         private:
             pointer data_;
 
@@ -272,12 +279,9 @@ namespace detail {
                     data_(data) {}
 
         public:
-            using iterator_category = std::contiguous_iterator_tag;
-            using value_type = TItem;
-            using element_type = TItem;
-            using difference_type = std::ptrdiff_t;
-            using reference = value_type &;
-            using pointer = value_type *;
+            array_iterator()
+                    :
+                    data_(nullptr) {}
 
             array_iterator(const array_iterator &other)
                     :
@@ -286,6 +290,46 @@ namespace detail {
 
             array_iterator &operator=(const array_iterator &other) {
                 data_ = other.data_;
+            }
+
+            array_iterator &operator=(pointer other) {
+                data_ = other;
+            }
+
+            reference operator*() const {
+                return *data_;
+            }
+
+            pointer operator->() const {
+                return data_;
+            }
+
+            reference operator[](difference_type index) const {
+                return data_[index];
+            }
+
+            bool operator==(const array_iterator &other) const {
+                return data_ == other.data_;
+            }
+
+            bool operator!=(const array_iterator &other) const {
+                return data_ != other.data_;
+            }
+
+            bool operator<(const array_iterator &other) const {
+                return data_ < other.data_;
+            }
+
+            bool operator<=(const array_iterator &other) const {
+                return data_ <= other.data_;
+            }
+
+            bool operator>(const array_iterator &other) const {
+                return data_ > other.data_;
+            }
+
+            bool operator>=(const array_iterator &other) const {
+                return data_ >= other.data_;
             }
 
             array_iterator &operator++() {
@@ -310,7 +354,39 @@ namespace detail {
                 return result;
             }
 
+            array_iterator &operator+=(difference_type difference) {
+                data_ += difference;
+                return *this;
+            }
 
+            array_iterator &operator-=(difference_type difference) {
+                data_ -= difference;
+                return *this;
+            }
+
+            array_iterator operator+(difference_type difference) const {
+                return array_iterator(data_ + difference);
+            }
+
+            array_iterator operator-(difference_type difference) const {
+                return array_iterator(data_ - difference);
+            }
+
+            difference_type operator+(const array_iterator &other) const {
+                return data_ + other.data_;
+            }
+
+            difference_type operator-(const array_iterator &other) const {
+                return data_ - other.data_;
+            }
+
+            friend array_iterator operator+(difference_type lhs, const array_iterator &rhs) {
+                return array_iterator(lhs + rhs.data_);
+            }
+
+            friend array_iterator operator-(difference_type lhs, const array_iterator &rhs) {
+                return array_iterator(lhs - rhs.data_);
+            }
         };
     };
 
@@ -398,7 +474,44 @@ std::ostream &operator<<(std::ostream &stream, A &data) {
     return stream;
 }
 
+class MyIterator {
+    int *p_;
+public:
+    using value_type = int;
+    using element_type = int;
+    using iterator_category = std::contiguous_iterator_tag;
+
+    int *operator->() const;
+
+    int &operator*() const;
+
+    int &operator[](int) const;
+
+    MyIterator &operator++();
+
+    MyIterator operator++(int);
+
+    MyIterator &operator--();
+
+    MyIterator operator--(int);
+
+    MyIterator &operator+=(int);
+
+    MyIterator &operator-=(int);
+
+    friend auto operator<=>(MyIterator, MyIterator) = default;
+
+    friend int operator-(MyIterator, MyIterator);
+
+    friend MyIterator operator+(MyIterator, int);
+
+    friend MyIterator operator-(MyIterator, int);
+
+    friend MyIterator operator+(int, MyIterator);
+};
+
 int main() {
+    static_assert(std::random_access_iterator<detail::array<int>::iterator>);
     detail::node<A> node1;
     node1.set_data(1, 1, "11111");
     detail::node<A> node2(node1);

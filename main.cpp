@@ -219,12 +219,48 @@ namespace detail {
         }
 
         ~array() {
-            if (data_ != nullptr) {
-                for (size_type i = 0; i < size_; ++i) {
-                    allocator_traits::destroy(allocator_, data_ + i);
-                }
-                allocator_traits::deallocate(allocator_, data_, size_);
+            for (size_type i = 0; i < size_; ++i) {
+                allocator_traits::destroy(allocator_, data_ + i);
             }
+            allocator_traits::deallocate(allocator_, data_, size_);
+        }
+
+        array &operator=(const array &other) {
+            pointer new_data = nullptr;
+            size_type new_size = other.size_;
+            if (other.data_ != nullptr) {
+                new_data = allocator_traits::allocate(allocator_, new_size);
+                for (size_type i = 0; i < new_size; ++i) {
+                    try {
+                        allocator_traits::construct(allocator_, new_data + i, other.data_[i]);
+                    } catch (...) {
+                        for (size_type j = 0; j < i; ++j) {
+                            allocator_traits::destroy(allocator_, new_data + j);
+                        }
+                        allocator_traits::deallocate(allocator_, new_data, new_size);
+                        throw;
+                    }
+                }
+            }
+            for (size_type i = 0; i < size_; ++i) {
+                allocator_traits::destroy(allocator_, data_ + i);
+            }
+            allocator_traits::deallocate(allocator_, data_, size_);
+            size_ = new_size;
+            data_ = new_data;
+            return *this;
+        }
+
+        array &operator=(array &&other) noexcept {
+            for (size_type i = 0; i < size_; ++i) {
+                allocator_traits::destroy(allocator_, data_ + i);
+            }
+            allocator_traits::deallocate(allocator_, data_, size_);
+            size_ = other.size_;
+            data_ = other.data_;
+            other.data_ = nullptr;
+            other.size_ = 0;
+            return *this;
         }
 
         void resize(size_type new_size) {
@@ -232,7 +268,14 @@ namespace detail {
         }
 
         void resize(size_type new_size, const_reference default_value) {
-            if (size_ > new_size) {
+            if (new_size == 0) {
+                for (size_type i = 0; i < size_; ++i) {
+                    allocator_traits::destroy(allocator_, data_ + i);
+                }
+                allocator_traits::deallocate(allocator_, data_, size_);
+                size_ = new_size;
+                data_ = nullptr;
+            } else if (size_ > new_size) {
                 pointer new_data = allocator_traits::allocate(allocator_, new_size);
                 for (size_type i = 0; i < new_size; ++i) {
                     try {
@@ -548,14 +591,20 @@ std::ostream &operator<<(std::ostream &stream, A &data) {
 
 int main() {
     static_assert(std::random_access_iterator<detail::array<int>::const_iterator>);
-    detail::array<int> array;
-    array.resize(3);
-    for (auto &item: array) {
-        item = 10;
-    }
-    array.resize(5, 9);
-    for (const auto &item: array) {
-        std::cout << item << " ";
+    {
+        detail::array<int> array;
+        array.resize(3);
+        for (auto &item: array) {
+            item = 10;
+        }
+        array.resize(5, 9);
+        for (const auto &item: array) {
+            std::cout << item << " ";
+        }
+        array.resize(0, 9);
+        for (const auto &item: array) {
+            std::cout << item << " ";
+        }
     }
     return 0;
 }

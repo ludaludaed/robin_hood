@@ -560,35 +560,49 @@ namespace detail {
         array<node, node_allocator> data_;
 
     private:
-        size_type hash_to_index(size_t hash) const {
+        size_type _hash_to_index(size_t hash) const {
             return hash % data_.size();
         }
 
-        size_type distance_to_ideal_bucket(size_type index) {
-            return index - hash_to_index(data_[index].hash());
+        size_type _distance_to_ideal_bucket(size_type index) {
+            return index - _hash_to_index(data_[index].hash());
         }
 
-        void shift_down(size_type index) {
-            while (distance_to_ideal_bucket(index + 1) != 0 || !data_[index + 1].empty()) {
+        void _shift_down(size_type index) {
+            while (_distance_to_ideal_bucket(index + 1) != 0 || !data_[index + 1].empty()) {
                 data_[index] = std::move(data_[index + 1]);
                 index++;
             }
         }
 
-        size_type find_index(const key_type &key) {
+        size_type _find_index(const key_type &key) {
             size_t hash = key_hash_(key);
-            size_type index = hash_to_index(hash);
+            size_type index = _hash_to_index(hash);
             size_type distance = 0;
+
             while (index < data_.size()) {
-                if (data_[index].empty() || distance > distance_to_ideal_bucket(index)) {
+                if (data_[index].empty() ||
+                    distance > _distance_to_ideal_bucket(index)) {
                     return -1;
-                } else if (data_[index].hash() == hash && key_equal_(data_[index], key)) {
+                }
+                if (data_[index].hash() == hash &&
+                    key_equal_(data_[index], key)) {
                     return index;
                 }
                 index++;
                 distance++;
             }
             return -1;
+        }
+
+        bool _erase(const key_type &key) {
+            size_type index = _find_index(key);
+
+            if (index != -1) {
+                _shift_down(index);
+                return true;
+            }
+            return false;
         }
 
     public:

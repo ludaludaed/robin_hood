@@ -569,17 +569,12 @@ namespace detail {
             return _hash_to_index(data_.size(), hash);
         }
 
-        size_type _distance_to_ideal_bucket(size_type index) {
-            return index - _hash_to_index(data_[index].hash());
+        size_type _distance_to_ideal_bucket(const array &data, size_type index) {
+            return index - _hash_to_index(data.size(), data[index].hash());
         }
 
-        void _shift_down(size_type index) {
-            while (index + 1 < data_.size() &&
-                   !data_[index + 1].empty() &&
-                   _distance_to_ideal_bucket(index + 1) != 0) {
-                data_[index] = std::move(data_[index + 1]);
-                index++;
-            }
+        size_type _distance_to_ideal_bucket(size_type index) {
+            return _distance_to_ideal_bucket(data_, index);
         }
 
         size_type _find_index(const key_type &key, size_t hash) {
@@ -610,7 +605,12 @@ namespace detail {
             size_type index = _find_index(key);
 
             if (index != -1) {
-                _shift_down(index);
+                while (index + 1 < data_.size() &&
+                       !data_[index + 1].empty() &&
+                       _distance_to_ideal_bucket(index + 1) != 0) {
+                    data_[index] = std::move(data_[index + 1]);
+                    index++;
+                }
                 return 1;
             }
             return 0;

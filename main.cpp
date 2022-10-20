@@ -548,6 +548,7 @@ namespace detail {
         using node = node<TValue>;
         using node_allocator = typename std::allocator_traits<allocator_type>::template rebind_alloc<node>;
         using size_type = typename std::allocator_traits<node_allocator>::size_type;
+        using array = array<node, node_allocator>;
 
     private:
         KeySelector key_selector_{};
@@ -557,11 +558,15 @@ namespace detail {
 
         float load_factor_{0.5f};
         size_type size_{0};
-        array<node, node_allocator> data_;
+        array data_;
 
     private:
+        size_type _hash_to_index(size_type size, size_t hash) const {
+            return hash % size;
+        }
+
         size_type _hash_to_index(size_t hash) const {
-            return hash % data_.size();
+            return _hash_to_index(data_.size(), hash);
         }
 
         size_type _distance_to_ideal_bucket(size_type index) {
@@ -611,7 +616,30 @@ namespace detail {
             return 0;
         }
 
-        bool _try_to_rehash();
+        bool _try_to_rehash() {
+            if (static_cast<float>(size_) / static_cast<float>(data_.size()) < load_factor_) {
+                return false;
+            }
+            size_type new_size = grow_policy_(data_.size());
+            array new_data(new_size);
+            for (size_type i = 0; i < data_.size(); ++i) {
+                if (!data_[i].empty()) {
+                    node new_node = data_[i];
+                    size_t hash = key_hash_(key_selector_(new_node));
+                    size_type index = _hash_to_index(new_size, hash);
+                    size_type distance_to_ideal_slot = 0;
+                    while (true) {
+                        if (new_data[index].empty()) {
+                            new_data[index].set_data(hash, new_node);
+                            break;
+                        } else {
+                            //TODO...
+                        }
+                    }
+                }
+            }
+            return true;
+        }
 
         template<typename... Args>
         void _insert(const key_type &key, Args &&... args) {

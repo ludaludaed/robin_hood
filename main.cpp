@@ -569,7 +569,9 @@ namespace detail {
         }
 
         void _shift_down(size_type index) {
-            while (!data_[index + 1].empty() && _distance_to_ideal_bucket(index + 1) != 0) {
+            while (index + 1 < data_.size() &&
+                   !data_[index + 1].empty() &&
+                   _distance_to_ideal_bucket(index + 1) != 0) {
                 data_[index] = std::move(data_[index + 1]);
                 index++;
             }
@@ -609,19 +611,22 @@ namespace detail {
             return 0;
         }
 
-        void _try_rehash();
+        bool _try_to_rehash();
 
-        void _insert(const value_type &value) {
-            const key_type &key = key_selector_(value);
+        template<typename... Args>
+        void _insert(const key_type &key, Args &&... args) {
             size_t hash = key_hash_(key);
             size_type index = _hash_to_index(hash);
 
             size_type insertion_index = _find_index(key, hash);
 
             if (insertion_index != -1) {
-                data_[insertion_index].set_data(hash, value);
+                data_[insertion_index].set_data(hash, std::forward<Args>(args)...);
             } else {
-                //TODO:....
+                if (_try_to_rehash()) {
+                    index = _hash_to_index(hash);
+                }
+                
             }
         }
 

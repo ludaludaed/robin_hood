@@ -223,6 +223,14 @@ namespace detail {
             }
         }
 
+        void swap(array &other) {
+            std::swap(data_, other.data_);
+            std::swap(size_, other.size_);
+            if constexpr(allocator_traits::propagate_on_container_swap::value) {
+                std::swap(allocator_, other.allocator_);
+            }
+        }
+
         TValue &operator[](size_type index) {
             assert(index < size_);
             return data_[index];
@@ -620,6 +628,7 @@ namespace detail {
             if (static_cast<float>(size_) / static_cast<float>(data_.size()) < load_factor_) {
                 return false;
             }
+
             size_type new_size = grow_policy_(data_.size());
             array new_data(new_size);
             for (size_type i = 0; i < data_.size(); ++i) {
@@ -675,9 +684,18 @@ namespace detail {
 
         void clear();
 
-        void swap();
-
         void reserve();
+
+        void swap(hash_table &other) {
+            std::swap(key_selector_, other.key_selector_);
+            std::swap(key_hash_, other.key_hash_);
+            std::swap(key_equal_, other.key_equal_);
+            std::swap(grow_policy_, other.grow_policy_);
+
+            std::swap(load_factor_, other.load_factor_);
+            std::swap(size_, other.size_);
+            std::swap(data_, other.data_);
+        }
 
         bool empty() const {
             return size_ == 0;
@@ -736,7 +754,8 @@ int main() {
         }
 
         detail::array<int> a;
-        a = array;
+
+        std::swap(array, a);
     }
     return 0;
 }

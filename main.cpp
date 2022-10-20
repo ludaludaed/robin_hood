@@ -140,6 +140,9 @@ namespace detail {
         }
 
         array &operator=(const array &other) {
+            if (this == &other) {
+                return *this;
+            }
             size_type new_size = other.size_;
             pointer new_data = allocator_traits::allocate(allocator_, new_size);
             for (size_type i = 0; i < new_size; ++i) {
@@ -224,11 +227,14 @@ namespace detail {
         }
 
         void swap(array &other) {
-            std::swap(data_, other.data_);
-            std::swap(size_, other.size_);
+            if (this == &other) {
+                return;
+            }
             if constexpr(allocator_traits::propagate_on_container_swap::value) {
                 std::swap(allocator_, other.allocator_);
             }
+            std::swap(data_, other.data_);
+            std::swap(size_, other.size_);
         }
 
         TValue &operator[](size_type index) {

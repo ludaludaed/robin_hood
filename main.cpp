@@ -575,8 +575,7 @@ namespace detail {
             }
         }
 
-        size_type _find_index(const key_type &key) {
-            size_t hash = key_hash_(key);
+        size_type _find_index(const key_type &key, size_t hash) {
             size_type index = _hash_to_index(hash);
             size_type distance = 0;
 
@@ -595,14 +594,35 @@ namespace detail {
             return -1;
         }
 
-        bool _erase(const key_type &key) {
+        size_type _find_index(const key_type &key) {
+            size_t hash = key_hash_(key);
+            return _find_index(key, hash);
+        }
+
+        size_type _erase(const key_type &key) {
             size_type index = _find_index(key);
 
             if (index != -1) {
                 _shift_down(index);
-                return true;
+                return 1;
             }
-            return false;
+            return 0;
+        }
+
+        void _try_rehash();
+
+        void _insert(const value_type &value) {
+            const key_type &key = key_selector_(value);
+            size_t hash = key_hash_(key);
+            size_type index = _hash_to_index(hash);
+
+            size_type insertion_index = _find_index(key, hash);
+
+            if (insertion_index != -1) {
+                data_[insertion_index].set_data(hash, value);
+            } else {
+                //TODO:....
+            }
         }
 
     public:

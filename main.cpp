@@ -564,6 +564,10 @@ namespace detail {
             return _hash_to_index(node.hash()) - (&node - data_.data());
         }
 
+        size_type _size_to_rehash() const {
+            return load_factor_ * data_.size();
+        }
+
         size_type _find_index(const key_type &key, size_t hash) {
             size_type index = _hash_to_index(hash);
             size_type distance = 0;
@@ -604,7 +608,7 @@ namespace detail {
         }
 
         bool _try_to_rehash() {
-            if (static_cast<float>(size_) / static_cast<float>(data_.size()) < load_factor_) {
+            if (size_ < _size_to_rehash()) {
                 return false;
             }
             //TODO..

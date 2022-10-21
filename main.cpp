@@ -84,7 +84,6 @@ namespace detail {
                 allocator_traits::destroy(allocator, data + i);
             }
             allocator_traits::deallocate(allocator, data, size);
-            size = 0;
         }
 
     public:

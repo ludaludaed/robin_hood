@@ -79,6 +79,14 @@ namespace detail {
             return new_data;
         }
 
+        static void _deallocate_and_destroy_data(allocator_type &allocator, pointer data, size_type size) {
+            for (size_type i = 0; i < size; ++i) {
+                allocator_traits::destroy(allocator, data + i);
+            }
+            allocator_traits::deallocate(allocator, data, size);
+            size = 0;
+        }
+
     public:
         allocator_type get_allocator() const {
             return allocator_;
@@ -129,7 +137,7 @@ namespace detail {
         }
 
         ~array() {
-            clear();
+            _deallocate_and_destroy_data(allocator_, data_, size_);
         }
 
         void swap(array &other) {
@@ -145,10 +153,7 @@ namespace detail {
         }
 
         void clear() {
-            for (size_type i = 0; i < size_; ++i) {
-                allocator_traits::destroy(allocator_, data_ + i);
-            }
-            allocator_traits::deallocate(allocator_, data_, size_);
+            _deallocate_and_destroy_data(allocator_, data_, size_);
             size_ = 0;
         }
 
@@ -185,7 +190,7 @@ namespace detail {
                         throw;
                     }
                 }
-                clear();
+                _deallocate_and_destroy_data(allocator_, data_, size_);
                 size_ = new_size;
                 data_ = new_data;
             } else if (size_ < new_size) {
@@ -204,7 +209,7 @@ namespace detail {
                 for (size_type i = size_; i < new_size; ++i) {
                     allocator_traits::construct(allocator_, new_data + i, default_value);
                 }
-                clear();
+                _deallocate_and_destroy_data(allocator_, data_, size_);
                 size_ = new_size;
                 data_ = new_data;
             }

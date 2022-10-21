@@ -61,6 +61,24 @@ namespace detail {
         pointer data_;
         size_type size_;
 
+    private:
+        template<typename ...Args>
+        static pointer _allocate_and_construct_data(allocator_type &allocator, size_type new_size, Args &&...args) {
+            pointer new_data = allocator_traits::allocate(allocator, new_size);
+            for (size_type i = 0; i < new_size; ++i) {
+                try {
+                    allocator_traits::construct(allocator, new_data + i, std::forward<Args>(args)...);
+                } catch (...) {
+                    for (size_type j = 0; j < i; ++j) {
+                        allocator_traits::destroy(allocator, new_data + j);
+                    }
+                    allocator_traits::deallocate(allocator, new_data, new_size);
+                    throw;
+                }
+            }
+            return new_data;
+        }
+
     public:
         allocator_type get_allocator() const {
             return allocator_;
@@ -74,35 +92,13 @@ namespace detail {
         explicit array(size_type size)
                 :
                 size_(size) {
-            data_ = allocator_traits::allocate(allocator_, size_);
-            for (size_type i = 0; i < size_; ++i) {
-                try {
-                    allocator_traits::construct(allocator_, data_ + i);
-                } catch (...) {
-                    for (size_type j = 0; j < i; ++j) {
-                        allocator_traits::destroy(allocator_, data_ + j);
-                    }
-                    allocator_traits::deallocate(allocator_, data_, size_);
-                    throw;
-                }
-            }
+            data_ = _allocate_and_construct_data(allocator_, size_);
         }
 
         array(size_type size, const_reference default_value)
                 :
                 size_(size) {
-            data_ = allocator_traits::allocate(allocator_, size_);
-            for (size_type i = 0; i < size_; ++i) {
-                try {
-                    allocator_traits::construct(allocator_, data_ + i, default_value);
-                } catch (...) {
-                    for (size_type j = 0; j < i; ++j) {
-                        allocator_traits::destroy(allocator_, data_ + j);
-                    }
-                    allocator_traits::deallocate(allocator_, data_, size_);
-                    throw;
-                }
-            }
+            data_ = _allocate_and_construct_data(allocator_, size_, default_value);
         }
 
         array(const array &other)

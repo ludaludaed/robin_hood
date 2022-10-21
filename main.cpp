@@ -560,8 +560,8 @@ namespace detail {
             return hash % data_.size();
         }
 
-        size_type _distance_to_ideal_bucket(node &node) {
-            return _hash_to_index(node.hash()) - (&node - data_.data());
+        size_type _distance_to_ideal_bucket(size_type index) {
+            return index - _hash_to_index(data_[index].hash());
         }
 
         size_type _size_to_rehash() const {
@@ -611,24 +611,40 @@ namespace detail {
             if (size_ < _size_to_rehash()) {
                 return false;
             }
-            //TODO..
+            //TODO...
             return true;
         }
 
-        template<typename... Args>
-        void _insert(const key_type &key, Args &&... args) {
+        void _insert(const value_type &value) {
+            const key_type &key = key_selector_(value);
             size_t hash = key_hash_(key);
             size_type index = _hash_to_index(hash);
 
             size_type insertion_index = _find_index(key, hash);
 
             if (insertion_index != -1) {
-                data_[insertion_index].set_data(hash, std::forward<Args>(args)...);
+                data_[insertion_index].set_data(hash, value);
             } else {
                 if (_try_to_rehash()) {
                     index = _hash_to_index(hash);
                 }
-                //TODO...
+                if (data_[index].empty()) {
+                    data_[index].set_data(hash, value);
+                } else {
+                    size_type distance = 0;
+                    node insertion_node;
+                    insertion_node.set_data(hash, value);
+                    while (!data_[index].empty()) {
+                        if (_distance_to_ideal_bucket(index) < distance) {
+                            data_[index].swap(insertion_node);
+                            distance = _distance_to_ideal_bucket(index);
+                        }
+                        //TODO mb not work... need to test
+                        distance++;
+                        index++;
+                    }
+                    data_[index].swap(insertion_node);
+                }
             }
         }
 

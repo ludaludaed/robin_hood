@@ -214,6 +214,10 @@ namespace detail {
             }
         }
 
+        pointer data() noexcept {
+            return data_;
+        }
+
         TValue &operator[](size_type index) {
             assert(index < size_);
             return data_[index];
@@ -552,20 +556,12 @@ namespace detail {
         array data_;
 
     private:
-        size_type _hash_to_index(size_type size, size_t hash) const {
-            return hash % size;
-        }
-
         size_type _hash_to_index(size_t hash) const {
-            return _hash_to_index(data_.size(), hash);
+            return hash % data_.size();
         }
 
-        size_type _distance_to_ideal_bucket(const array &data, size_type index) {
-            return index - _hash_to_index(data.size(), data[index].hash());
-        }
-
-        size_type _distance_to_ideal_bucket(size_type index) {
-            return _distance_to_ideal_bucket(data_, index);
+        size_type _distance_to_ideal_bucket(node &node) {
+            return _hash_to_index(node.hash()) - (&node - data_.data());
         }
 
         size_type _find_index(const key_type &key, size_t hash) {
@@ -611,25 +607,7 @@ namespace detail {
             if (static_cast<float>(size_) / static_cast<float>(data_.size()) < load_factor_) {
                 return false;
             }
-
-            size_type new_size = grow_policy_(data_.size());
-            array new_data(new_size);
-            for (size_type i = 0; i < data_.size(); ++i) {
-                if (!data_[i].empty()) {
-                    node new_node = data_[i];
-                    size_t hash = key_hash_(key_selector_(new_node));
-                    size_type index = _hash_to_index(new_size, hash);
-                    size_type distance_to_ideal_slot = 0;
-                    while (true) {
-                        if (new_data[index].empty()) {
-                            new_data[index].set_data(hash, new_node);
-                            break;
-                        } else {
-                            //TODO...
-                        }
-                    }
-                }
-            }
+            //TODO..
             return true;
         }
 

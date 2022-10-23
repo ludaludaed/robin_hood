@@ -139,23 +139,6 @@ namespace detail {
             _deallocate_and_destroy_data(allocator_, data_, size_);
         }
 
-        void swap(array &other) {
-            if (this == &other) {
-                return;
-            }
-            if constexpr(allocator_traits::propagate_on_container_swap::value ||
-                         allocator_traits::is_always_equal::value) {
-                std::swap(allocator_, other.allocator_);
-            }
-            std::swap(data_, other.data_);
-            std::swap(size_, other.size_);
-        }
-
-        void clear() {
-            _deallocate_and_destroy_data(allocator_, data_, size_);
-            size_ = 0;
-        }
-
         array &operator=(const array &other) {
             if (this == &other) {
                 return *this;
@@ -194,28 +177,49 @@ namespace detail {
                     allocator_ = std::move(other.allocator_);
                 }
                 data_ = other.data_;
-            } else if (allocator_ == other.allocator_) {
-                data_ = other.data_;
+                other.data_ = nullptr;
+                other.size_ = 0;
             } else {
-                size_type new_size = other.size_;
-                pointer new_data = allocator_traits::allocate(allocator_, new_size);
-                for (size_type i = 0; i < new_size; ++i) {
-                    try {
-                        allocator_traits::construct(allocator_, new_data + i, std::move(data_[i]));
-                    } catch (...) {
-                        for (size_type j = 0; j < i; ++j) {
-                            allocator_traits::destroy(allocator_, new_data + j);
+                if (allocator_ == other.allocator_) {
+                    data_ = other.data_;
+                    other.data_ = nullptr;
+                    other.size_ = 0;
+                } else {
+                    size_type new_size = other.size_;
+                    pointer new_data = allocator_traits::allocate(allocator_, new_size);
+                    for (size_type i = 0; i < new_size; ++i) {
+                        try {
+                            allocator_traits::construct(allocator_, new_data + i, std::move(other.data_[i]));
+                        } catch (...) {
+                            for (size_type j = 0; j < i; ++j) {
+                                allocator_traits::destroy(allocator_, new_data + j);
+                            }
+                            allocator_traits::deallocate(allocator_, new_data, new_size);
+                            throw;
                         }
-                        allocator_traits::deallocate(allocator_, new_data, new_size);
-                        throw;
                     }
+                    data_ = new_data;
                 }
-                data_ = new_data;
             }
             size_ = other.size_;
-            other.data_ = nullptr;
-            other.size_ = 0;
             return *this;
+        }
+
+        void swap(array &other) {
+            if (this == &other) {
+                return;
+            }
+            if constexpr(allocator_traits::propagate_on_container_swap::value ||
+                         allocator_traits::is_always_equal::value) {
+                std::swap(allocator_, other.allocator_);
+            }
+            std::swap(data_, other.data_);
+            std::swap(size_, other.size_);
+        }
+
+        void clear() {
+            _deallocate_and_destroy_data(allocator_, data_, size_);
+            size_ = 0;
         }
 
         void resize(size_type new_size) {

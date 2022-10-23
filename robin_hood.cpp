@@ -209,12 +209,54 @@ namespace detail {
             if (this == &other) {
                 return;
             }
-            if constexpr(allocator_traits::propagate_on_container_swap::value ||
-                         allocator_traits::is_always_equal::value) {
+            if constexpr(allocator_traits::propagate_on_container_swap::value) {
                 std::swap(allocator_, other.allocator_);
+                std::swap(data_, other.data_);
+                std::swap(size_, other.size_);
+            } else {
+                if (allocator_ == other.allocator_) {
+                    std::swap(data_, other.data_);
+                    std::swap(size_, other.size_);
+                } else {
+                    size_type first_size = other.size_;
+                    pointer first_data = allocator_traits::allocate(allocator_, first_size);
+                    for (size_type i = 0; i < first_size; ++i) {
+                        try {
+                            allocator_traits::construct(allocator_, first_data + i,
+                                                        std::move_if_noexcept(other.data_[i]));
+                        } catch (...) {
+                            for (size_type j = 0; j < i; ++j) {
+                                allocator_traits::destroy(allocator_, first_data + j);
+                            }
+                            allocator_traits::deallocate(allocator_, first_data, first_size);
+                            throw;
+                        }
+                    }
+
+                    size_type second_size = other.size_;
+                    pointer second_data = allocator_traits::allocate(other.allocator_, second_size);
+                    for (size_type i = 0; i < second_size; ++i) {
+                        try {
+                            allocator_traits::construct(other.allocator_, second_data + i,
+                                                        std::move_if_noexcept(other.data_[i]));
+                        } catch (...) {
+                            _deallocate_and_destroy_data(allocator_, first_data, first_size);
+                            for (size_type j = 0; j < i; ++j) {
+                                allocator_traits::destroy(other.allocator_, second_data + j);
+                            }
+                            allocator_traits::deallocate(other.allocator_, second_data, second_size);
+                            throw;
+                        }
+                    }
+                    _deallocate_and_destroy_data(allocator_, data_, size_);
+                    _deallocate_and_destroy_data(other.allocator_, other.data_, other.size_);
+
+                    std::swap(data_, first_data);
+                    std::swap(size_, first_size);
+                    std::swap(other.data_, second_data);
+                    std::swap(other.size_, second_size);
+                }
             }
-            std::swap(data_, other.data_);
-            std::swap(size_, other.size_);
         }
 
         void clear() {
@@ -666,25 +708,25 @@ namespace detail {
             return true;
         }
 
-        void _insert(const value_type &value) {
-            const key_type &key = key_selector_(value);
+        template<typename ...Args>
+        void _insert(const key_type &key, Args &&... args) {
             size_t hash = key_hash_(key);
             size_type index = _hash_to_index(hash);
 
             size_type insertion_index = _find_index(key, hash);
 
             if (insertion_index != -1) {
-                data_[insertion_index].set_data(hash, value);
+                data_[insertion_index].set_data(hash, std::forward<Args>(args)...);
             } else {
                 if (_try_to_rehash()) {
                     index = _hash_to_index(hash);
                 }
                 if (data_[index].empty()) {
-                    data_[index].set_data(hash, value);
+                    data_[index].set_data(hash, std::forward<Args>(args)...);
                 } else {
                     size_type distance = 0;
                     node insertion_node;
-                    insertion_node.set_data(hash, value);
+                    insertion_node.set_data(hash, std::forward<Args>(args)...);
                     while (!data_[index].empty()) {
                         if (_distance_to_ideal_bucket(index) < distance) {
                             data_[index].swap(insertion_node);
@@ -704,7 +746,14 @@ namespace detail {
             return data_.get_allocator();
         }
 
-        hash_table();
+        hash_table() = default;
+
+        explicit hash_table(size_type capacity, float load_factor = 0.5f)
+                :
+                data_(capacity),
+                load_factor_(load_factor) {}
+
+        hash_table(std::initializer_list<value_type>);
 
         hash_table(const hash_table &other);
 
@@ -788,6 +837,7 @@ int main() {
         detail::array<int> a;
 
         std::swap(array, a);
+        array.swap(a);
     }
     return 0;
 }

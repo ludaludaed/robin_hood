@@ -98,18 +98,36 @@ namespace detail {
 
         explicit array(size_type size)
                 :
+                data_(nullptr),
                 size_(size) {
+            data_ = _allocate_and_construct_data(allocator_, size_);
+        }
+
+        explicit array(const allocator_type &allocator)
+                :
+                data_(nullptr),
+                size_(0),
+                allocator_(allocator) {
+        }
+
+        array(size_type size, const allocator_type &allocator)
+                :
+                data_(nullptr),
+                size_(size),
+                allocator_(allocator) {
             data_ = _allocate_and_construct_data(allocator_, size_);
         }
 
         array(size_type size, const_reference default_value)
                 :
+                data_(nullptr),
                 size_(size) {
             data_ = _allocate_and_construct_data(allocator_, size_, default_value);
         }
 
         array(const array &other)
                 :
+                data_(nullptr),
                 size_(other.size_),
                 allocator_(allocator_traits::select_on_container_copy_construction(other.allocator_)) {
             data_ = allocator_traits::allocate(allocator_, size_);
@@ -309,6 +327,18 @@ namespace detail {
 
         pointer data() noexcept {
             return data_;
+        }
+
+        template<typename ...Args>
+        void emplace(size_type index, Args &&...args) {
+            assert(index < size_);
+            allocator_traits::construct(allocator_, data_ + index, std::forward<Args>(args)...);
+        }
+
+        template<typename ...Args>
+        void emplace(iterator it, Args &&...args) {
+            assert(it.data_ != nullptr);
+            allocator_traits::construct(allocator_, it.data_, std::forward<Args>(args)...);
         }
 
         TValue &operator[](size_type index) {
@@ -627,6 +657,9 @@ namespace detail {
         using key_equal = KeyEqual;
         using hasher = KeyHash;
 
+        using key_selector = KeySelector;
+        using grow_policy = GrowPolicy;
+
         using iterator = hash_iterator<TValue>;
         using const_iterator = hash_iterator<const TValue>;
 
@@ -639,10 +672,10 @@ namespace detail {
         using array = array<node, node_allocator>;
 
     private:
-        KeySelector key_selector_{};
-        KeyHash key_hash_{};
-        KeyEqual key_equal_{};
-        GrowPolicy grow_policy_{};
+        key_selector key_selector_{};
+        hasher key_hash_{};
+        key_equal key_equal_{};
+        grow_policy grow_policy_{};
 
         float load_factor_{0.5f};
         size_type size_{0};
@@ -700,12 +733,34 @@ namespace detail {
             return 0;
         }
 
+        void _rehash(size_type new_capacity) {
+            hash_table rehashing_table(new_capacity,
+                                       load_factor_,
+                                       data_.get_allocator(),
+                                       key_selector_,
+                                       key_hash_,
+                                       key_equal_,
+                                       grow_policy_);
+
+            for (const auto &item: data_) {
+                if (!item.empty()) {
+                    rehashing_table._insert(item.value());
+                }
+            }
+            rehashing_table.swap(*this);
+        }
+
         bool _try_to_rehash() {
             if (size_ < _size_to_rehash()) {
                 return false;
             }
-            //TODO...
+            _rehash(grow_policy_(data_.size()));
             return true;
+        }
+
+        void _insert(const value_type &value) {
+            const key_type &key = key_selector_(value);
+            _insert(key, value);
         }
 
         template<typename ...Args>
@@ -717,12 +772,14 @@ namespace detail {
 
             if (insertion_index != -1) {
                 data_[insertion_index].set_data(hash, std::forward<Args>(args)...);
+                size_++;
             } else {
                 if (_try_to_rehash()) {
                     index = _hash_to_index(hash);
                 }
                 if (data_[index].empty()) {
                     data_[index].set_data(hash, std::forward<Args>(args)...);
+                    size_++;
                 } else {
                     size_type distance = 0;
                     node insertion_node;
@@ -732,11 +789,11 @@ namespace detail {
                             data_[index].swap(insertion_node);
                             distance = _distance_to_ideal_bucket(index);
                         }
-                        //TODO mb not work... need to test
                         distance++;
                         index++;
                     }
                     data_[index].swap(insertion_node);
+                    size_++;
                 }
             }
         }
@@ -752,6 +809,22 @@ namespace detail {
                 :
                 data_(capacity),
                 load_factor_(load_factor) {}
+
+        hash_table(size_type capacity,
+                   float load_factor,
+                   const allocator_type &allocator,
+                   const key_selector &key_selector,
+                   const hasher &hasher,
+                   const key_equal &key_equal,
+                   const grow_policy &grow_policy)
+                :
+                data_(capacity, allocator),
+                load_factor_(load_factor),
+                key_selector_(key_selector),
+                key_hash_(hasher),
+                key_equal_(key_equal),
+                grow_policy_(grow_policy) {
+        }
 
         hash_table(std::initializer_list<value_type>);
 

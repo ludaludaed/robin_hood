@@ -643,7 +643,7 @@ namespace detail {
             class Allocator>
     class hash_table {
         template<typename TItem>
-        class hash_iterator;
+        class hash_table_iterator;
 
     public:
         using value_type = TValue;
@@ -660,8 +660,8 @@ namespace detail {
         using key_selector = KeySelector;
         using grow_policy = GrowPolicy;
 
-        using iterator = hash_iterator<TValue>;
-        using const_iterator = hash_iterator<const TValue>;
+        using iterator = hash_table_iterator<TValue>;
+        using const_iterator = hash_table_iterator<const TValue>;
 
         using allocator_type = Allocator;
 
@@ -858,6 +858,83 @@ namespace detail {
         size_type size() const {
             return size_;
         }
+
+    private:
+        template<typename TItem>
+        class hash_table_iterator {
+            friend class hash_table;
+
+        public:
+            using iterator_category = std::bidirectional_iterator_tag;
+            using value_type = TItem;
+            using difference_type = std::ptrdiff_t;
+            using reference = value_type &;
+            using pointer = value_type *;
+
+        private:
+            pointer data_;
+
+            explicit hash_table_iterator(pointer data)
+            :
+            data_(data) {}
+
+        public:
+            hash_table_iterator()
+                    :
+                    data_(nullptr) {}
+
+            hash_table_iterator(const hash_table_iterator &other)
+                    :
+                    data_(other.data_) {}
+
+
+            hash_table_iterator &operator=(const hash_table_iterator &other) {
+                data_ = other.data_;
+            }
+
+            hash_table_iterator &operator=(pointer other) {
+                data_ = other;
+            }
+
+        public:
+            reference operator*() const {
+                return *data_;
+            }
+
+            pointer operator->() const {
+                return data_;
+            }
+
+            bool operator==(const hash_table_iterator &other) const {
+                return data_ == other.data_;
+            }
+
+            bool operator!=(const hash_table_iterator &other) const {
+                return data_ != other.data_;
+            }
+
+            hash_table_iterator &operator++() {
+                ++data_;
+                return *this;
+            }
+
+            hash_table_iterator operator++(int) {
+                hash_table_iterator result = *this;
+                ++data_;
+                return result;
+            }
+
+            hash_table_iterator &operator--() {
+                --data_;
+                return *this;
+            }
+
+            hash_table_iterator operator--(int) {
+                hash_table_iterator result = *this;
+                --data_;
+                return result;
+            }
+        };
     };
 
     class grow_power_of_two_policy {

@@ -874,28 +874,34 @@ namespace detail {
             using pointer = value_type *;
 
         private:
+            pointer first_;
+            pointer last_;
             pointer data_;
 
-            explicit hash_table_iterator(pointer data)
-            :
-            data_(data) {}
+            explicit hash_table_iterator(pointer data, pointer first, pointer last)
+                    :
+                    first_(first),
+                    last_(last),
+                    data_(data) {}
 
         public:
             hash_table_iterator()
                     :
+                    first_(nullptr),
+                    last_(nullptr),
                     data_(nullptr) {}
 
             hash_table_iterator(const hash_table_iterator &other)
                     :
+                    first_(other.first_),
+                    last_(other.last_),
                     data_(other.data_) {}
 
 
             hash_table_iterator &operator=(const hash_table_iterator &other) {
+                first_ = other.first_;
+                last_ = other.last_;
                 data_ = other.data_;
-            }
-
-            hash_table_iterator &operator=(pointer other) {
-                data_ = other;
             }
 
         public:
@@ -908,33 +914,52 @@ namespace detail {
             }
 
             bool operator==(const hash_table_iterator &other) const {
-                return data_ == other.data_;
+                return first_ == other.first_ && last_ == other.last_ && data_ == other.data_;
             }
 
             bool operator!=(const hash_table_iterator &other) const {
-                return data_ != other.data_;
+                return first_ != other.first_ || last_ != other.last_ || data_ != other.data_;
             }
 
             hash_table_iterator &operator++() {
-                ++data_;
+                go_next();
                 return *this;
             }
 
             hash_table_iterator operator++(int) {
                 hash_table_iterator result = *this;
-                ++data_;
+                go_next();
                 return result;
             }
 
             hash_table_iterator &operator--() {
-                --data_;
+                go_prior();
                 return *this;
             }
 
             hash_table_iterator operator--(int) {
                 hash_table_iterator result = *this;
-                --data_;
+                go_prior();
                 return result;
+            }
+
+        private:
+            void go_next() {
+                while (true) {
+                    data_++;
+                    if (data_ == last_ || !data_->empty()) {
+                        return;
+                    }
+                }
+            }
+
+            void go_prior() {
+                while (true) {
+                    data_--;
+                    if (data_ == first_ - 1 || !data_->empty()) {
+                        return;
+                    }
+                }
             }
         };
     };

@@ -189,8 +189,8 @@ namespace detail {
             if (this == &other) {
                 return *this;
             }
-            _deallocate_and_destroy_data(allocator_, data_, size_);
             if constexpr (allocator_traits::propagate_on_container_move_assignment::value) {
+                _deallocate_and_destroy_data(allocator_, data_, size_);
                 if (allocator_ != other.allocator_) {
                     allocator_ = std::move(other.allocator_);
                 }
@@ -199,10 +199,12 @@ namespace detail {
                 other.size_ = 0;
             } else {
                 if (allocator_ == other.allocator_) {
+                    _deallocate_and_destroy_data(allocator_, data_, size_);
                     data_ = other.data_;
                     other.data_ = nullptr;
                     other.size_ = 0;
                 } else {
+                    _deallocate_and_destroy_data(allocator_, data_, size_);
                     size_type new_size = other.size_;
                     pointer new_data = allocator_traits::allocate(allocator_, new_size);
                     for (size_type i = 0; i < new_size; ++i) {

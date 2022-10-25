@@ -633,7 +633,6 @@ namespace detail {
         }
     };
 
-    // base for hash set and hash map
     template<class TValue,
             class KeySelector,
             class KeyHash,
@@ -744,7 +743,7 @@ namespace detail {
 
             for (const auto &item: data_) {
                 if (!item.empty()) {
-                    rehashing_table._insert(item.value());
+                    rehashing_table._insert(std::move(item));
                 }
             }
             rehashing_table.swap(*this);
@@ -756,6 +755,33 @@ namespace detail {
             }
             _rehash(grow_policy_(data_.size()));
             return true;
+        }
+
+        void _insert(node &&insertion_node) {
+            const key_type &key = key_selector_(insertion_node.value());
+            size_t hash = insertion_node.hash();
+            size_type index = _hash_to_index(insertion_node.hash());
+
+            size_type insertion_index = _find_index(key, hash);
+
+            if (insertion_index == -1) {
+                data_[index].set_data(hash, std::move(insertion_node));
+                size_++;
+            } else {
+                size_type distance = 0;
+                node temp_insertion_node;
+                temp_insertion_node.set_data(hash, std::move(insertion_node));
+                while (!data_[index].empty()) {
+                    if (_distance_to_ideal_bucket(index) < distance) {
+                        data_[index].swap(temp_insertion_node);
+                        distance = _distance_to_ideal_bucket(index);
+                    }
+                    distance++;
+                    index++;
+                }
+                data_[index].swap(temp_insertion_node);
+                size_++;
+            }
         }
 
         void _insert(const value_type &value) {
@@ -770,8 +796,8 @@ namespace detail {
 
             size_type insertion_index = _find_index(key, hash);
 
-            if (insertion_index != -1) {
-                data_[insertion_index].set_data(hash, std::forward<Args>(args)...);
+            if (insertion_index == -1) {
+                data_[index].set_data(hash, std::forward<Args>(args)...);
                 size_++;
             } else {
                 if (_try_to_rehash()) {

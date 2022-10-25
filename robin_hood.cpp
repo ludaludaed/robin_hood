@@ -432,7 +432,6 @@ namespace detail {
                 data_ = other;
             }
 
-        public:
             reference operator*() const {
                 return *data_;
             }
@@ -445,7 +444,6 @@ namespace detail {
                 return data_[index];
             }
 
-        public:
             bool operator==(const array_iterator &other) const {
                 return data_ == other.data_;
             }
@@ -470,7 +468,6 @@ namespace detail {
                 return data_ >= other.data_;
             }
 
-        public:
             array_iterator &operator++() {
                 ++data_;
                 return *this;
@@ -672,6 +669,7 @@ namespace detail {
         using node_allocator = typename std::allocator_traits<allocator_type>::template rebind_alloc<node>;
         using size_type = typename std::allocator_traits<node_allocator>::size_type;
         using array = array<node, node_allocator>;
+        using node_pointer = typename array::pointer;
 
     private:
         key_selector key_selector_{};
@@ -861,6 +859,62 @@ namespace detail {
             return size_;
         }
 
+        iterator begin() noexcept {
+            node_pointer first = data_.data();
+            node_pointer last = data_.data() + data_.size();
+            return iterator(first, first, last);
+        }
+
+        iterator end() noexcept {
+            node_pointer first = data_.data();
+            node_pointer last = data_.data() + data_.size();
+            return iterator(last, first, last);
+        }
+
+        iterator begin() const noexcept {
+            return cbegin();
+        }
+
+        iterator end() const noexcept {
+            return cend();
+        }
+
+        const_iterator cbegin() const noexcept {
+            node_pointer first = data_.data();
+            node_pointer last = data_.data() + data_.size();
+            return const_iterator(first, first, last);
+        }
+
+        const_iterator cend() const noexcept {
+            node_pointer first = data_.data();
+            node_pointer last = data_.data() + data_.size();
+            return const_iterator(last, first, last);
+        }
+
+        iterator rbegin() noexcept {
+            node_pointer first = data_.data();
+            node_pointer last = data_.data() + data_.size();
+            return iterator(last - 1, first, last);
+        }
+
+        iterator rend() noexcept {
+            node_pointer first = data_.data();
+            node_pointer last = data_.data() + data_.size();
+            return iterator(first - 1, first, last);
+        }
+
+        const_iterator rbegin() const noexcept {
+            node_pointer first = data_.data();
+            node_pointer last = data_.data() + data_.size();
+            return const_iterator(last - 1, first, last);
+        }
+
+        const_iterator rend() const noexcept {
+            node_pointer first = data_.data();
+            node_pointer last = data_.data() + data_.size();
+            return const_iterator(first - 1, first, last);
+        }
+
     private:
         template<typename TItem>
         class hash_table_iterator {
@@ -874,11 +928,11 @@ namespace detail {
             using pointer = value_type *;
 
         private:
-            pointer first_;
-            pointer last_;
-            pointer data_;
+            node_pointer first_;
+            node_pointer last_;
+            node_pointer data_;
 
-            explicit hash_table_iterator(pointer data, pointer first, pointer last)
+            explicit hash_table_iterator(node_pointer data, node_pointer first, node_pointer last)
                     :
                     first_(first),
                     last_(last),
@@ -906,11 +960,11 @@ namespace detail {
 
         public:
             reference operator*() const {
-                return *data_;
+                return data_->value();
             }
 
             pointer operator->() const {
-                return data_;
+                return &data_->value();
             }
 
             bool operator==(const hash_table_iterator &other) const {

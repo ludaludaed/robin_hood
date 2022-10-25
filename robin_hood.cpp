@@ -671,10 +671,10 @@ namespace detail {
         using node_pointer = typename array::pointer;
 
     private:
-        key_selector key_selector_{};
-        hasher key_hash_{};
-        key_equal key_equal_{};
-        grow_policy grow_policy_{};
+        key_selector key_selector_function_{};
+        hasher key_hash_function_{};
+        key_equal key_equal_function_{};
+        grow_policy grow_policy_function_{};
 
         float load_factor_{0.5f};
         size_type size_{0};
@@ -693,28 +693,12 @@ namespace detail {
             return load_factor_ * data_.size();
         }
 
-        size_type _find_index(const key_type &key, size_t hash) {
-            size_type index = _hash_to_index(hash);
-            size_type distance = 0;
-
-            while (index < data_.size()) {
-                if (data_[index].empty() ||
-                    distance > _distance_to_ideal_bucket(index)) {
-                    return -1;
-                }
-                if (data_[index].hash() == hash &&
-                    key_equal_(data_[index], key)) {
-                    return index;
-                }
-                index++;
-                distance++;
+        size_type _next_capacity(size_type needed_capacity) {
+            size_type current_capacity = data_.size();
+            while (needed_capacity >= current_capacity) {
+                current_capacity = grow_policy_function_(current_capacity);
             }
-            return -1;
-        }
-
-        size_type _find_index(const key_type &key) {
-            size_t hash = key_hash_(key);
-            return _find_index(key, hash);
+            return current_capacity;
         }
 
         void _shift_up(size_type index) {
@@ -740,6 +724,30 @@ namespace detail {
             }
         }
 
+        size_type _find_index(const key_type &key, size_t hash) {
+            size_type index = _hash_to_index(hash);
+            size_type distance = 0;
+
+            while (index < data_.size()) {
+                if (data_[index].empty() ||
+                    distance > _distance_to_ideal_bucket(index)) {
+                    return -1;
+                }
+                if (data_[index].hash() == hash &&
+                    key_equal_function_(data_[index], key)) {
+                    return index;
+                }
+                index++;
+                distance++;
+            }
+            return -1;
+        }
+
+        size_type _find_index(const key_type &key) {
+            size_t hash = key_hash_function_(key);
+            return _find_index(key, hash);
+        }
+
         size_type _erase(const key_type &key) {
             size_type index = _find_index(key);
 
@@ -751,32 +759,32 @@ namespace detail {
         }
 
         void _rehash(size_type new_capacity) {
-            hash_table rehashing_table(new_capacity,
-                                       load_factor_,
-                                       data_.get_allocator(),
-                                       key_selector_,
-                                       key_hash_,
-                                       key_equal_,
-                                       grow_policy_);
+            if (new_capacity > data_.size()) {
+                hash_table rehashing_table(new_capacity,
+                                           load_factor_,
+                                           data_.get_allocator(),
+                                           key_hash_function_,
+                                           key_equal_function_);
 
-            for (const auto &item: data_) {
-                if (!item.empty()) {
-                    rehashing_table._insert(std::move(item));
+                for (const auto &item: data_) {
+                    if (!item.empty()) {
+                        rehashing_table._insert(std::move(item));
+                    }
                 }
+                rehashing_table.swap(*this);
             }
-            rehashing_table.swap(*this);
         }
 
         bool _try_to_rehash() {
             if (size_ < _size_to_rehash()) {
                 return false;
             }
-            _rehash(grow_policy_(data_.size()));
+            _rehash(grow_policy_function_(data_.size()));
             return true;
         }
 
         void _insert(node &&insertion_node) {
-            const key_type &key = key_selector_(insertion_node.value());
+            const key_type &key = key_selector_function_(insertion_node.value());
             size_t hash = insertion_node.hash();
             size_type index = _hash_to_index(insertion_node.hash());
 
@@ -793,13 +801,13 @@ namespace detail {
         }
 
         void _insert(const value_type &value) {
-            const key_type &key = key_selector_(value);
+            const key_type &key = key_selector_function_(value);
             _insert(key, value);
         }
 
         template<typename ...Args>
         void _insert(const key_type &key, Args &&... args) {
-            size_t hash = key_hash_(key);
+            size_t hash = key_hash_function_(key);
             size_type index = _hash_to_index(hash);
 
             size_type insertion_index = _find_index(key, hash);
@@ -824,46 +832,141 @@ namespace detail {
 
         hash_table() = default;
 
-        explicit hash_table(size_type capacity, float load_factor = 0.5f)
-                :
-                data_(capacity),
-                load_factor_(load_factor) {}
-
-        hash_table(size_type capacity,
-                   float load_factor,
-                   const allocator_type &allocator,
-                   const key_selector &key_selector,
-                   const hasher &hasher,
-                   const key_equal &key_equal,
-                   const grow_policy &grow_policy)
+        explicit hash_table(size_type capacity,
+                            float load_factor = 0.5f,
+                            const allocator_type &allocator = allocator_type{},
+                            const hasher &key_hash_function = hasher{},
+                            const key_equal &key_equal_function = key_equal{})
                 :
                 data_(capacity, allocator),
+                size_(0),
                 load_factor_(load_factor),
-                key_selector_(key_selector),
-                key_hash_(hasher),
-                key_equal_(key_equal),
-                grow_policy_(grow_policy) {
+                key_hash_function_(key_hash_function),
+                key_equal_function_(key_equal_function),
+                key_selector_function_(),
+                grow_policy_function_() {
         }
 
-        hash_table(std::initializer_list<value_type>);
+        template<typename InputIt>
+        hash_table(InputIt begin, InputIt end,
+                   float load_factor = 0.5f,
+                   const allocator_type &allocator = allocator_type{},
+                   const hasher &key_hash_function = hasher{},
+                   const key_equal &key_equal_function = key_equal{})
+                :
+                data_(allocator),
+                size_(0),
+                load_factor_(load_factor),
+                key_hash_function_(key_hash_function),
+                key_equal_function_(key_equal_function),
+                key_selector_function_(),
+                grow_policy_function_() {
+            insert(begin, end);
+        }
 
-        hash_table(const hash_table &other);
+        hash_table(std::initializer_list<value_type> list,
+                   float load_factor = 0.5f,
+                   const allocator_type &allocator = allocator_type{},
+                   const hasher &key_hash_function = hasher{},
+                   const key_equal &key_equal_function = key_equal{})
+                :
+                data_(allocator),
+                size_(0),
+                load_factor_(load_factor),
+                key_hash_function_(key_hash_function),
+                key_equal_function_(key_equal_function),
+                key_selector_function_(),
+                grow_policy_function_() {
+            insert(list.begin(), list.end());
+        }
 
-        hash_table(hash_table &&other);
+        hash_table(const hash_table &other)
+                :
+                data_(other.data_),
+                size_(other.size_),
+                load_factor_(other.load_factor_),
+                key_hash_function_(other.key_hash_function_),
+                key_equal_function_(other.key_equal_function_),
+                key_selector_function_(other.key_selector_function_),
+                grow_policy_function_(other.grow_policy_function_) {}
 
-        hash_table &operator=(const hash_table &other);
+        hash_table(hash_table &&other) noexcept(
+        std::is_nothrow_move_constructible<hasher>::value &&
+        std::is_nothrow_move_constructible<key_equal>::value &&
+        std::is_nothrow_move_constructible<grow_policy>::value &&
+        std::is_nothrow_move_constructible<array>::value)
+                :
+                data_(std::move(other.data_)),
+                size_(other.size_),
+                load_factor_(other.load_factor_),
+                key_hash_function_(std::move(other.key_hash_function_)),
+                key_equal_function_(std::move(other.key_equal_function_)),
+                key_selector_function_(std::move(other.key_selector_function_)),
+                grow_policy_function_(std::move(other.grow_policy_function_)) {
+            other.clear();
+        }
 
-        hash_table &operator=(hash_table &&other);
+        hash_table &operator=(const hash_table &other) {
+            if (this == &other) {
+                return *this;
+            }
+            data_ = other.data_;
+            size_ = other.size_;
+            load_factor_ = other.load_factor_;
+            key_hash_function_ = other.key_hash_function_;
+            key_equal_function_ = other.key_equal_function_;
+            key_selector_function_ = other.key_selector_function_;
+            grow_policy_function_ = other.grow_policy_function_;
+            return *this;
+        }
 
-        void clear();
+        hash_table &operator=(hash_table &&other) noexcept {
+            if (this == &other) {
+                return *this;
+            }
+            data_ = std::move(other.data_);
+            size_ = other.size_;
+            load_factor_ = other.load_factor_;
+            key_hash_function_ = std::move(other.key_hash_function_);
+            key_equal_function_ = std::move(other.key_equal_function_);
+            key_selector_function_ = std::move(other.key_selector_function_);
+            grow_policy_function_ = std::move(other.grow_policy_function_);
+            other.clear();
+            return *this;
+        }
 
-        void reserve();
+        void reserve(size_type new_capacity) {
+            size_type next_capacity = _next_capacity(new_capacity);
+            if (new_capacity > data_.size()) {
+                _rehash(next_capacity);
+            }
+        }
+
+        template<typename InputIt>
+        void insert(InputIt begin, InputIt end) {
+            if constexpr (std::is_base_of<
+                    std::forward_iterator_tag,
+                    typename std::iterator_traits<InputIt>::iterator_category>::value) {
+                typename std::iterator_traits<InputIt>::difference_type insertion_size = std::distance(begin, end);
+                if (static_cast<size_type>(insertion_size) + size_ >= _size_to_rehash()) {
+                    _rehash(_next_capacity(static_cast<size_type>(insertion_size) + size_));
+                }
+            }
+            for (; begin != end; begin++) {
+                _insert(value_type(*begin));
+            }
+        }
+
+        void clear() {
+            data_.clear();
+            size_ = 0;
+        }
 
         void swap(hash_table &other) {
-            std::swap(key_selector_, other.key_selector_);
-            std::swap(key_hash_, other.key_hash_);
-            std::swap(key_equal_, other.key_equal_);
-            std::swap(grow_policy_, other.grow_policy_);
+            std::swap(key_selector_function_, other.key_selector_function_);
+            std::swap(key_hash_function_, other.key_hash_function_);
+            std::swap(key_equal_function_, other.key_equal_function_);
+            std::swap(grow_policy_function_, other.grow_policy_function_);
 
             std::swap(load_factor_, other.load_factor_);
             std::swap(size_, other.size_);

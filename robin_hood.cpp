@@ -717,7 +717,7 @@ namespace detail {
             return _find_index(key, hash);
         }
 
-        void shift_up(size_type index) {
+        void _shift_up(size_type index) {
             size_type distance = 0;
             node insertion_node(std::move(data_[index]));
             while (!insertion_node.empty()) {
@@ -731,7 +731,7 @@ namespace detail {
             data_[index].swap(insertion_node);
         };
 
-        void shift_down(size_type index) {
+        void _shift_down(size_type index) {
             while (index + 1 < data_.size() &&
                    !data_[index + 1].empty() &&
                    _distance_to_ideal_bucket(index + 1) != 0) {
@@ -744,7 +744,7 @@ namespace detail {
             size_type index = _find_index(key);
 
             if (index != -1) {
-                shift_down(index);
+                _shift_down(index);
                 return 1;
             }
             return 0;
@@ -786,7 +786,7 @@ namespace detail {
                 data_[index].set_data(hash, std::move(insertion_node));
                 size_++;
             } else {
-                shift_up(index);
+                _shift_up(index);
                 data_[index].set_data(hash, std::move(insertion_node));
                 size_++;
             }
@@ -811,7 +811,7 @@ namespace detail {
                 if (_try_to_rehash()) {
                     index = _hash_to_index(hash);
                 }
-                shift_up(index);
+                _shift_up(index);
                 data_[index].set_data(hash, std::forward<Args>(args)...);
                 size_++;
             }

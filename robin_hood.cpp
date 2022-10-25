@@ -717,16 +717,34 @@ namespace detail {
             return _find_index(key, hash);
         }
 
+        void shift_up(size_type index) {
+            size_type distance = 0;
+            node insertion_node(std::move(data_[index]));
+            while (!insertion_node.empty()) {
+                if (_distance_to_ideal_bucket(index) < distance) {
+                    data_[index].swap(insertion_node);
+                    distance = _distance_to_ideal_bucket(index);
+                }
+                distance++;
+                index++;
+            }
+            data_[index].swap(insertion_node);
+        };
+
+        void shift_down(size_type index) {
+            while (index + 1 < data_.size() &&
+                   !data_[index + 1].empty() &&
+                   _distance_to_ideal_bucket(index + 1) != 0) {
+                data_[index] = std::move(data_[index + 1]);
+                index++;
+            }
+        }
+
         size_type _erase(const key_type &key) {
             size_type index = _find_index(key);
 
             if (index != -1) {
-                while (index + 1 < data_.size() &&
-                       !data_[index + 1].empty() &&
-                       _distance_to_ideal_bucket(index + 1) != 0) {
-                    data_[index] = std::move(data_[index + 1]);
-                    index++;
-                }
+                shift_down(index);
                 return 1;
             }
             return 0;
@@ -768,18 +786,8 @@ namespace detail {
                 data_[index].set_data(hash, std::move(insertion_node));
                 size_++;
             } else {
-                size_type distance = 0;
-                node temp_insertion_node;
-                temp_insertion_node.set_data(hash, std::move(insertion_node));
-                while (!data_[index].empty()) {
-                    if (_distance_to_ideal_bucket(index) < distance) {
-                        data_[index].swap(temp_insertion_node);
-                        distance = _distance_to_ideal_bucket(index);
-                    }
-                    distance++;
-                    index++;
-                }
-                data_[index].swap(temp_insertion_node);
+                shift_up(index);
+                data_[index].set_data(hash, std::move(insertion_node));
                 size_++;
             }
         }
@@ -803,24 +811,9 @@ namespace detail {
                 if (_try_to_rehash()) {
                     index = _hash_to_index(hash);
                 }
-                if (data_[index].empty()) {
-                    data_[index].set_data(hash, std::forward<Args>(args)...);
-                    size_++;
-                } else {
-                    size_type distance = 0;
-                    node insertion_node;
-                    insertion_node.set_data(hash, std::forward<Args>(args)...);
-                    while (!data_[index].empty()) {
-                        if (_distance_to_ideal_bucket(index) < distance) {
-                            data_[index].swap(insertion_node);
-                            distance = _distance_to_ideal_bucket(index);
-                        }
-                        distance++;
-                        index++;
-                    }
-                    data_[index].swap(insertion_node);
-                    size_++;
-                }
+                shift_up(index);
+                data_[index].set_data(hash, std::forward<Args>(args)...);
+                size_++;
             }
         }
 

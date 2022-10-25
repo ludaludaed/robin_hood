@@ -534,8 +534,8 @@ namespace detail {
         using storage = utils::storage<TValue>;
 
     private:
-        static const uint8_t kNoEmptyMarker = 0;
-        static const uint8_t kEmptyMarker = 1;
+        static const uint8_t kNoEmptyMarker = 1;
+        static const uint8_t kEmptyMarker = 0;
         static const hash_type kDefaultHash = 0;
 
         uint8_t empty_;

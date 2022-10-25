@@ -5,7 +5,7 @@
 #include <cassert>
 
 namespace ludaed {
-    
+
     namespace detail {
 
         template<typename TValue>

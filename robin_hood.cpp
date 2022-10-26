@@ -874,18 +874,18 @@ namespace ludaed {
                 size_++;
             }
 
-            std::pair<bool, iterator> _insert(const value_type &value) {
+            std::pair<iterator, bool> _insert(const value_type &value) {
                 const key_type &key = key_selector_function_(value);
                 return _insert(key, value);
             }
 
-            std::pair<bool, iterator> _insert(value_type &&value) {
+            std::pair<iterator, bool> _insert(value_type &&value) {
                 const key_type &key = key_selector_function_(value);
                 return _insert(key, std::move(value));
             }
 
             template<typename ...Args>
-            std::pair<bool, iterator> _insert(const key_type &key, Args &&... args) {
+            std::pair<iterator, bool> _insert(const key_type &key, Args &&... args) {
                 size_t hash = key_hash_function_(key);
                 bool has_key = true;
                 size_type index = _hash_to_index(hash);
@@ -907,7 +907,7 @@ namespace ludaed {
                 node_pointer first = data_.data();
                 node_pointer last = data_.data() + data_.size();
 
-                return std::make_pair(has_key, iterator(&data_[index], first, last));
+                return std::make_pair(iterator(&data_[index], first, last), has_key);
             }
 
         public:
@@ -1033,6 +1033,16 @@ namespace ludaed {
 
             std::pair<iterator, bool> insert(value_type &&value) {
                 return _insert(value);
+            }
+
+            iterator insert(const_iterator hint, const value_type &value) {
+                (void) hint;
+                return _insert(value).first();
+            }
+
+            iterator insert(const_iterator hint, value_type &&value) {
+                (void) hint;
+                return _insert(value).first();
             }
 
             template<typename InputIt>

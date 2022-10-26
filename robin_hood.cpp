@@ -146,6 +146,25 @@ namespace ludaed {
                 }
             }
 
+            array(const array &other, const allocator_type &allocator)
+                    :
+                    data_(nullptr),
+                    size_(other.size_),
+                    allocator_(allocator) {
+                data_ = allocator_traits::allocate(allocator_, size_);
+                for (size_type i = 0; i < size_; ++i) {
+                    try {
+                        allocator_traits::construct(allocator_, data_ + i, other.data_[i]);
+                    } catch (...) {
+                        for (size_type j = 0; j < i; ++j) {
+                            allocator_traits::destroy(allocator_, data_ + j);
+                        }
+                        allocator_traits::deallocate(allocator_, data_, size_);
+                        throw;
+                    }
+                }
+            }
+
             array(array &&other) noexcept
                     :
                     size_(other.size_),
@@ -153,6 +172,30 @@ namespace ludaed {
                     allocator_(std::move(other.allocator_)) {
                 other.data_ = nullptr;
                 other.size_ = 0;
+            }
+
+            array(array &&other, const allocator_type &allocator)
+            noexcept(std::is_nothrow_move_constructible<TValue>::value)
+                    :
+                    size_(0),
+                    data_(nullptr),
+                    allocator_(allocator) {
+                size_type new_size = other.size_;
+                pointer new_data = allocator_traits::allocate(allocator_, new_size);
+                for (size_type i = 0; i < new_size; ++i) {
+                    try {
+                        allocator_traits::construct(allocator_, new_data + i, std::move(other.data_[i]));
+                    } catch (...) {
+                        for (size_type j = 0; j < i; ++j) {
+                            allocator_traits::destroy(allocator_, new_data + j);
+                        }
+                        allocator_traits::deallocate(allocator_, new_data, new_size);
+                        throw;
+                    }
+                }
+                other.clear();
+                size_ = new_size;
+                data_ = new_data;
             }
 
             ~array() {
@@ -221,6 +264,7 @@ namespace ludaed {
                             }
                         }
                         data_ = new_data;
+                        other.clear();
                     }
                 }
                 size_ = other.size_;
@@ -283,6 +327,7 @@ namespace ludaed {
 
             void clear() {
                 _deallocate_and_destroy_data(allocator_, data_, size_);
+                data_ = nullptr;
                 size_ = 0;
             }
 
@@ -968,6 +1013,16 @@ namespace ludaed {
                     key_selector_function_(other.key_selector_function_),
                     grow_policy_function_(other.grow_policy_function_) {}
 
+            hash_table(const hash_table &other, const allocator_type &allocator)
+                    :
+                    data_(other.data_, allocator),
+                    size_(other.size_),
+                    load_factor_(other.load_factor_),
+                    key_hash_function_(other.key_hash_function_),
+                    key_equal_function_(other.key_equal_function_),
+                    key_selector_function_(other.key_selector_function_),
+                    grow_policy_function_(other.grow_policy_function_) {}
+
             hash_table(hash_table &&other) noexcept(
             std::is_nothrow_move_constructible<hasher>::value &&
             std::is_nothrow_move_constructible<key_equal>::value &&
@@ -975,6 +1030,22 @@ namespace ludaed {
             std::is_nothrow_move_constructible<array>::value)
                     :
                     data_(std::move(other.data_)),
+                    size_(other.size_),
+                    load_factor_(other.load_factor_),
+                    key_hash_function_(std::move(other.key_hash_function_)),
+                    key_equal_function_(std::move(other.key_equal_function_)),
+                    key_selector_function_(std::move(other.key_selector_function_)),
+                    grow_policy_function_(std::move(other.grow_policy_function_)) {
+                other.clear();
+            }
+
+            hash_table(hash_table &&other, const allocator_type &allocator) noexcept(
+            std::is_nothrow_move_constructible<hasher>::value &&
+            std::is_nothrow_move_constructible<key_equal>::value &&
+            std::is_nothrow_move_constructible<grow_policy>::value &&
+            std::is_nothrow_move_constructible<array>::value)
+                    :
+                    data_(std::move(other.data_), allocator),
                     size_(other.size_),
                     load_factor_(other.load_factor_),
                     key_hash_function_(std::move(other.key_hash_function_)),

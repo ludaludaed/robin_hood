@@ -865,19 +865,15 @@ namespace ludaed {
 
             void _insert(node &&insertion_node) {
                 const key_type &key = key_selector_function_(insertion_node.value());
-                size_t hash = insertion_node.hash();
                 size_type index = _hash_to_index(insertion_node.hash());
 
-                size_type insertion_index = _find_index(key, hash);
+                size_type insertion_index = _find_index(key, insertion_node.hash());
 
-                if (insertion_index == -1) {
-                    data_[index].set_data(hash, std::move(insertion_node));
-                    size_++;
-                } else {
+                if (insertion_index != -1) {
                     _shift_up(index);
-                    data_[index].set_data(hash, std::move(insertion_node));
-                    size_++;
                 }
+                data_[index] = std::move(insertion_node);
+                size_++;
             }
 
             void _insert(const value_type &value) {
@@ -892,17 +888,13 @@ namespace ludaed {
 
                 size_type insertion_index = _find_index(key, hash);
 
-                if (insertion_index == -1) {
-                    data_[index].set_data(hash, std::forward<Args>(args)...);
-                    size_++;
-                } else {
+                if (insertion_index != -1) {
                     if (_try_to_rehash()) {
                         index = _hash_to_index(hash);
                     }
-                    _shift_up(index);
-                    data_[index].set_data(hash, std::forward<Args>(args)...);
-                    size_++;
                 }
+                data_[index].set_data(hash, std::forward<Args>(args)...);
+                size_++;
             }
 
         public:
@@ -1020,6 +1012,14 @@ namespace ludaed {
                 if (new_capacity > data_.size()) {
                     _rehash(next_capacity);
                 }
+            }
+
+            std::pair<iterator, bool> insert(const value_type &value) {
+                //TODO
+            }
+
+            std::pair<iterator, bool> insert(value_type &&value) {
+                //TODO
             }
 
             template<typename InputIt>

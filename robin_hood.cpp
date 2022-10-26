@@ -1037,8 +1037,14 @@ namespace ludaed {
 
             template<typename InputIt>
             void insert(InputIt begin, InputIt end) {
-                for (; begin != end; begin++) {
+                for (; begin != end; ++begin) {
                     _insert(value_type(*begin));
+                }
+            }
+
+            void insert(std::initializer_list<value_type> list) {
+                for (auto it = list.begin(); it != list.end(); ++it) {
+                    _insert(std::move(*it));
                 }
             }
 

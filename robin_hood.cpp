@@ -3,6 +3,7 @@
 #include <utility>
 #include <list>
 #include <cassert>
+#include <cstdint>
 
 namespace ludaed {
 
@@ -525,6 +526,83 @@ namespace ludaed {
                     return array_iterator(lhs - rhs.data_);
                 }
             };
+        };
+
+        static constexpr const size_t PRIMES[] = {
+                1u,
+                5u,
+                17u,
+                29u,
+                37u,
+                53u,
+                67u,
+                79u,
+                97u,
+                131u,
+                193u,
+                257u,
+                389u,
+                521u,
+                769u,
+                1031u,
+                1543u,
+                2053u,
+                3079u,
+                6151u,
+                12289u,
+                24593u,
+                49157u
+#if SIZE_MAX >= ULONG_MAX
+                ,98317ul,
+                196613ul,
+                393241ul,
+                786433ul,
+                1572869ul,
+                3145739ul,
+                6291469ul,
+                12582917ul,
+                25165843ul,
+                50331653ul,
+                100663319ul,
+                201326611ul,
+                402653189ul,
+                805306457ul,
+                1610612741ul,
+                3221225473ul,
+                4294967291ul
+#endif
+#if SIZE_MAX >= ULLONG_MAX
+                ,6442450939ull,
+                12884901893ull,
+                25769803751ull,
+                51539607551ull,
+                103079215111ull,
+                206158430209ull,
+                412316860441ull,
+                824633720831ull,
+                1649267441651ull,
+                3298534883309ull,
+                6597069766657ull,
+#endif
+        };
+
+        class grow_power_of_two_policy {
+        public:
+            size_t operator()(size_t current) const {
+                return current * 2;
+            }
+        };
+
+        class grow_prime_policy {
+        public:
+            size_t operator()(size_t current) const {
+                for (const auto &item: PRIMES) {
+                    if (current < item) {
+                        return item;
+                    }
+                }
+                return current;
+            }
         };
 
         template<typename TValue>
@@ -1133,13 +1211,6 @@ namespace ludaed {
                 }
             };
         };
-
-        class grow_power_of_two_policy {
-        public:
-            size_t operator()(size_t current) const {
-                return current * 2;
-            }
-        };
     }
 }
 
@@ -1161,6 +1232,7 @@ std::ostream &operator<<(std::ostream &stream, A &data) {
 int main() {
     static_assert(std::random_access_iterator<ludaed::detail::array<int>::const_iterator>);
     {
+        std::cout << SIZE_MAX << " " << ULONG_MAX << std::endl;
         ludaed::detail::node<A> node1;
         node1.set_data(1, "11111");
         ludaed::detail::node<A> node2(node1);

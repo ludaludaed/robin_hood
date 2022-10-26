@@ -1380,7 +1380,7 @@ namespace ludaed {
             using value_type = TValue;
 
         public:
-            key_type &operator()(const std::pair<key_type, value_type> &pair) {
+            key_type &operator()(const std::pair<key_type, value_type> &pair) noexcept {
                 return pair.first;
             }
         };
@@ -1391,7 +1391,7 @@ namespace ludaed {
             using key_type = TKey;
 
         public:
-            key_type &operator()(const key_type &pair) {
+            key_type &operator()(const key_type &pair) noexcept {
                 return pair;
             }
         };

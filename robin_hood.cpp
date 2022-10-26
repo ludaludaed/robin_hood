@@ -892,6 +892,7 @@ namespace ludaed {
                     if (_try_to_rehash()) {
                         index = _hash_to_index(hash);
                     }
+                    _shift_up(index);
                 }
                 data_[index].set_data(hash, std::forward<Args>(args)...);
                 size_++;

@@ -858,6 +858,7 @@ namespace ludaed {
 
                 if (index != -1) {
                     _shift_down(index);
+                    --size_;
                     return 1;
                 }
                 return 0;
@@ -1056,6 +1057,17 @@ namespace ludaed {
                 for (auto it = list.begin(); it != list.end(); ++it) {
                     _insert(std::move(*it));
                 }
+            }
+
+            template<typename ...Args>
+            std::pair<iterator, bool> emplace(Args ...args) {
+                return _insert(value_type(std::forward<Args>(args)...));
+            }
+
+            template<typename ...Args>
+            iterator emplace_hint(const_iterator hint, Args ...args) {
+                (void) hint;
+                return _insert(value_type(std::forward<Args>(args)...)).first();
             }
 
             void clear() {

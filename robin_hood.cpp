@@ -836,7 +836,7 @@ namespace ludaed {
                 while (index < data_.size()) {
                     if (data_[index].empty() ||
                         distance > _distance_to_ideal_bucket(index)) {
-                        return -1;
+                        return data_.size();
                     }
                     if (data_[index].hash() == hash &&
                         key_equal_function_(data_[index], key)) {
@@ -845,7 +845,7 @@ namespace ludaed {
                     index++;
                     distance++;
                 }
-                return -1;
+                return data_.size();
             }
 
             size_type _find_index(const key_type &key) {
@@ -856,7 +856,7 @@ namespace ludaed {
             size_type _erase(const key_type &key) {
                 size_type index = _find_index(key);
 
-                if (index != -1) {
+                if (index != data_.size()) {
                     _shift_down(index);
                     --size_;
                     return 1;
@@ -892,7 +892,7 @@ namespace ludaed {
                 size_type index = _hash_to_index(hash);
                 size_type insertion_index = _find_index(key, hash);
 
-                if (insertion_index == -1) {
+                if (insertion_index == data_.size()) {
                     if (_try_to_rehash()) {
                         index = _hash_to_index(hash);
                     }
@@ -1070,6 +1070,120 @@ namespace ludaed {
                 return _insert(value_type(std::forward<Args>(args)...)).first();
             }
 
+            iterator erase(iterator position) {
+                if (position == end()) {
+                    return end();
+                }
+                _erase(key_selector_function_(*position));
+                if (position.data_->empty()) {
+                    ++position;
+                }
+                return position;
+            }
+
+            iterator erase(const_iterator position) {
+                return erase(mutable_iterator(position));
+            }
+
+            iterator erase(const_iterator begin, const_iterator end) {
+                // TODO: Can be faster
+                for (; begin != end; ++begin) {
+                    erase(begin);
+                }
+            }
+
+            size_type erase(const key_type &key) {
+                return _erase(key);
+            }
+
+            size_type count(const key_type &key) const {
+                size_type index = _find_index(key);
+                if (index != data_.size()) {
+                    return 1;
+                }
+                return 0;
+            }
+
+            iterator find(const key_type &key) {
+                return mutable_iterator(static_cast<const hash_table *>(this)->find(key));
+            }
+
+            const_iterator find(const key_type &key) const {
+                size_type index = _find_index(key);
+                if (index == data_.size()) {
+                    return end();
+                }
+                node_pointer first = data_.data();
+                node_pointer last = data_.data() + data_.size();
+                return const_iterator(&data_[index], first, last);
+            }
+
+            //TODO: Two more methods to find
+
+            bool contains(const key_type &key) const {
+                return count(key) == 1;
+            }
+
+            std::pair<iterator, iterator> equal_range(const key_type &key) {
+                iterator founded = find(key);
+                return std::make_pair(founded, std::next(founded));
+            }
+
+            std::pair<const_iterator, const_iterator> equal_range(const key_type &key) const {
+                const_iterator founded = find(key);
+                return std::make_pair(founded, std::next(founded));
+            }
+
+            //TODO: Two more methods to equal_range
+
+            size_type bucket_count() const {
+                return size_;
+            }
+
+            size_type max_bucket_count() const {
+                return data_.size();
+            }
+
+            float load_factor() const {
+                return static_cast<float>(size_) / static_cast<float>(data_.size());
+            }
+
+            float max_load_factor() const {
+                return load_factor_;
+            }
+
+            void max_load_factor(float load_factor) {
+                load_factor_ = std::min(1.f, load_factor);
+            }
+
+            void rehash(size_type new_capacity) {
+                reserve(new_capacity);
+            }
+
+            hasher hash_function() const {
+                return key_hash_function_;
+            }
+
+            key_equal key_eq() const {
+                return key_equal_function_;
+            }
+
+            bool operator==(const hash_table &other) const {
+                if (other.size() != size()) {
+                    return false;
+                }
+                for (auto it = other.begin(); it != other.end(); ++it) {
+                    if (!contains(other.key_selector_function_(*it))) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            bool operator!=(const hash_table &other) const {
+                return !this->operator==(other);
+            }
+
             void clear() {
                 data_.clear();
                 size_ = 0;
@@ -1092,6 +1206,12 @@ namespace ludaed {
 
             size_type size() const {
                 return size_;
+            }
+
+            iterator mutable_iterator(const_iterator position) const {
+                node_pointer first = data_.data();
+                node_pointer last = data_.data() + data_.size();
+                return iterator(const_cast<node_pointer>(position.data_), first, last);
             }
 
             iterator begin() noexcept {

@@ -730,7 +730,7 @@ namespace ludaed {
             using pointer = TValue *;
             using const_pointer = const TValue *;
 
-            using key_type = typename KeySelector::type;
+            using key_type = typename KeySelector::key_type;
             using key_equal = KeyEqual;
             using hasher = KeyHash;
 
@@ -1372,7 +1372,59 @@ namespace ludaed {
                 }
             };
         };
+
+        template<typename TKey, typename TValue>
+        class unordered_map_key_selector {
+        public:
+            using key_type = TKey;
+            using value_type = TValue;
+
+        public:
+            key_type &operator()(const std::pair<key_type, value_type> &pair) {
+                return pair.first;
+            }
+        };
+
+        template<typename TKey>
+        class unordered_set_key_selector {
+        public:
+            using key_type = TKey;
+
+        public:
+            key_type &operator()(const key_type &pair) {
+                return pair;
+            }
+        };
     }
+
+    template<class TKey,
+            class TValue,
+            class KeyHash = std::hash<TKey>,
+            class KeyEqual = std::equal_to<TKey>,
+            class Allocator = std::allocator<std::pair<const TKey, TValue>>>
+    class unordered_map : public detail::hash_table<
+            std::pair<const TKey, TValue>,
+            detail::unordered_map_key_selector<const TKey, TValue>,
+            KeyHash,
+            KeyEqual,
+            detail::grow_power_of_two_policy,
+            Allocator> {
+
+    };
+
+    template<class TKey,
+            class KeyHash = std::hash<TKey>,
+            class KeyEqual = std::equal_to<TKey>,
+            class Allocator = std::allocator<TKey>>
+    class unordered_set : public detail::hash_table<
+            TKey,
+            detail::unordered_set_key_selector<TKey>,
+            KeyHash,
+            KeyEqual,
+            detail::grow_power_of_two_policy,
+            Allocator> {
+
+    };
 }
 
 struct A {
@@ -1393,6 +1445,7 @@ std::ostream &operator<<(std::ostream &stream, A &data) {
 int main() {
     static_assert(std::random_access_iterator<ludaed::detail::array<int>::const_iterator>);
     {
+        ludaed::unordered_map<int, int> map;
         std::cout << SIZE_MAX << " " << ULONG_MAX << std::endl;
         ludaed::detail::node<A> node1;
         node1.set_data(1, "11111");

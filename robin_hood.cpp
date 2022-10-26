@@ -946,14 +946,6 @@ namespace ludaed {
 
             template<typename InputIt>
             void insert(InputIt begin, InputIt end) {
-                if constexpr (std::is_base_of<
-                        std::forward_iterator_tag,
-                        typename std::iterator_traits<InputIt>::iterator_category>::value) {
-                    typename std::iterator_traits<InputIt>::difference_type insertion_size = std::distance(begin, end);
-                    if (static_cast<size_type>(insertion_size) + size_ >= _size_to_rehash()) {
-                        _rehash(_next_capacity(static_cast<size_type>(insertion_size) + size_));
-                    }
-                }
                 for (; begin != end; begin++) {
                     _insert(value_type(*begin));
                 }

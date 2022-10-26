@@ -37,10 +37,12 @@ namespace ludaed {
 
         template<typename TValue, typename Allocator = std::allocator<TValue>>
         class array {
-            static_assert(std::is_trivially_constructible_v<TValue>);
+            static_assert(std::is_default_constructible<TValue>::value);
 
             template<typename TItem>
             class array_iterator;
+
+            using allocator_traits = std::allocator_traits<Allocator>;
 
         public:
             using allocator_type = Allocator;
@@ -54,11 +56,9 @@ namespace ludaed {
 
             using iterator = array_iterator<TValue>;
             using const_iterator = array_iterator<const TValue>;
+            using size_type = typename std::allocator_traits<allocator_type>::size_type;
 
         private:
-            using size_type = typename std::allocator_traits<allocator_type>::size_type;
-            using allocator_traits = std::allocator_traits<allocator_type>;
-
             allocator_type allocator_;
             pointer data_;
             size_type size_;
@@ -722,6 +722,13 @@ namespace ludaed {
             template<typename TItem>
             class hash_table_iterator;
 
+            using node = node<TValue>;
+            using node_allocator = typename std::allocator_traits<Allocator>::template rebind_alloc<node>;
+            using array = array<node, node_allocator>;
+            using node_pointer = typename array::pointer;
+
+            static constexpr const float kDefaultLoadFactor = 0.5f;
+
         public:
             using value_type = TValue;
             using difference_type = std::ptrdiff_t;
@@ -742,12 +749,7 @@ namespace ludaed {
 
             using allocator_type = Allocator;
 
-        private:
-            using node = node<TValue>;
-            using node_allocator = typename std::allocator_traits<allocator_type>::template rebind_alloc<node>;
-            using size_type = typename std::allocator_traits<node_allocator>::size_type;
-            using array = array<node, node_allocator>;
-            using node_pointer = typename array::pointer;
+            using size_type = typename array::size_type;
 
         private:
             key_selector key_selector_function_{};
@@ -755,7 +757,7 @@ namespace ludaed {
             key_equal key_equal_function_{};
             grow_policy grow_policy_function_{};
 
-            float load_factor_{0.5f};
+            float load_factor_{kDefaultLoadFactor};
             size_type size_{0};
             array data_;
 
@@ -806,10 +808,9 @@ namespace ludaed {
             void _rehash(size_type new_capacity) {
                 if (new_capacity > data_.size()) {
                     hash_table rehashing_table(new_capacity,
-                                               load_factor_,
-                                               data_.get_allocator(),
                                                key_hash_function_,
-                                               key_equal_function_);
+                                               key_equal_function_,
+                                               data_.get_allocator());
 
                     for (const auto &item: data_) {
                         if (!item.empty()) {
@@ -919,14 +920,11 @@ namespace ludaed {
             hash_table() = default;
 
             explicit hash_table(size_type capacity,
-                                float load_factor = 0.5f,
-                                const allocator_type &allocator = allocator_type{},
                                 const hasher &key_hash_function = hasher{},
-                                const key_equal &key_equal_function = key_equal{})
+                                const key_equal &key_equal_function = key_equal{},
+                                const allocator_type &allocator = allocator_type{})
                     :
                     data_(capacity, allocator),
-                    size_(0),
-                    load_factor_(load_factor),
                     key_hash_function_(key_hash_function),
                     key_equal_function_(key_equal_function),
                     key_selector_function_(),
@@ -935,14 +933,11 @@ namespace ludaed {
 
             template<typename InputIt>
             hash_table(InputIt begin, InputIt end,
-                       float load_factor = 0.5f,
-                       const allocator_type &allocator = allocator_type{},
                        const hasher &key_hash_function = hasher{},
-                       const key_equal &key_equal_function = key_equal{})
+                       const key_equal &key_equal_function = key_equal{},
+                       const allocator_type &allocator = allocator_type{})
                     :
                     data_(allocator),
-                    size_(0),
-                    load_factor_(load_factor),
                     key_hash_function_(key_hash_function),
                     key_equal_function_(key_equal_function),
                     key_selector_function_(),
@@ -951,14 +946,11 @@ namespace ludaed {
             }
 
             hash_table(std::initializer_list<value_type> list,
-                       float load_factor = 0.5f,
-                       const allocator_type &allocator = allocator_type{},
                        const hasher &key_hash_function = hasher{},
-                       const key_equal &key_equal_function = key_equal{})
+                       const key_equal &key_equal_function = key_equal{},
+                       const allocator_type &allocator = allocator_type{})
                     :
                     data_(allocator),
-                    size_(0),
-                    load_factor_(load_factor),
                     key_hash_function_(key_hash_function),
                     key_equal_function_(key_equal_function),
                     key_selector_function_(),
@@ -1373,18 +1365,6 @@ namespace ludaed {
             };
         };
 
-        template<typename TKey, typename TValue>
-        class unordered_map_key_selector {
-        public:
-            using key_type = TKey;
-            using value_type = TValue;
-
-        public:
-            key_type &operator()(const std::pair<key_type, value_type> &pair) noexcept {
-                return pair.first;
-            }
-        };
-
         template<typename TKey>
         class unordered_set_key_selector {
         public:
@@ -1402,28 +1382,65 @@ namespace ludaed {
             class KeyHash = std::hash<TKey>,
             class KeyEqual = std::equal_to<TKey>,
             class Allocator = std::allocator<std::pair<const TKey, TValue>>>
-    class unordered_map : public detail::hash_table<
-            std::pair<const TKey, TValue>,
-            detail::unordered_map_key_selector<const TKey, TValue>,
-            KeyHash,
-            KeyEqual,
-            detail::grow_power_of_two_policy,
-            Allocator> {
+    class unordered_map {
 
-    };
+        class key_selector {
+        public:
+            using key_type = TKey;
+            using value_type = TValue;
 
-    template<class TKey,
-            class KeyHash = std::hash<TKey>,
-            class KeyEqual = std::equal_to<TKey>,
-            class Allocator = std::allocator<TKey>>
-    class unordered_set : public detail::hash_table<
-            TKey,
-            detail::unordered_set_key_selector<TKey>,
-            KeyHash,
-            KeyEqual,
-            detail::grow_power_of_two_policy,
-            Allocator> {
+        public:
+            key_type &operator()(const std::pair<key_type, value_type> &pair) noexcept {
+                return pair.first;
+            }
+        };
 
+        using hash_table = detail::hash_table<std::pair<const TKey, TValue>,
+                key_selector, KeyHash, KeyEqual, detail::grow_power_of_two_policy, Allocator>;
+
+    public:
+        using key_type = typename hash_table::key_type;
+        using value_type = typename hash_table::value_type;
+        using mapped_type = TValue;
+
+        using size_type = typename hash_table::size_type;
+        using difference_type = typename hash_table::difference_type;
+
+        using hasher = typename hash_table::hasher;
+        using key_equal = typename hash_table::key_equal;
+        using allocator_type = typename hash_table::allocator_type;
+
+        using reference = typename hash_table::reference;
+        using const_reference = typename hash_table::const_reference;
+
+        using pointer = typename hash_table::pointer;
+        using const_pointer = typename hash_table::const_pointer;
+
+        using iterator = typename hash_table::iterator;
+        using const_iterator = typename hash_table::const_iterator;
+
+    private:
+        hash_table hash_table_;
+
+    public:
+        unordered_map()
+                :
+                hash_table_() {}
+
+        explicit unordered_map(size_type capacity,
+                               const hasher &key_hash_function = hasher{},
+                               const key_equal &key_equal_function = key_equal{},
+                               const allocator_type &allocator = allocator_type{})
+                : hash_table_(capacity, key_hash_function, key_equal_function, allocator) {}
+
+        unordered_map(size_type capacity, const allocator_type &allocator)
+                : hash_table_(capacity, hasher{}, key_equal{}, allocator) {}
+
+        unordered_map(size_type capacity, const hasher &key_hash_function, const allocator_type &allocator)
+                : hash_table_(capacity, key_hash_function, key_equal{}, allocator) {}
+
+        explicit unordered_map(const allocator_type &allocator)
+                : hash_table_(0, hasher{}, key_equal{}, allocator) {}
     };
 }
 
@@ -1445,6 +1462,7 @@ std::ostream &operator<<(std::ostream &stream, A &data) {
 int main() {
     static_assert(std::random_access_iterator<ludaed::detail::array<int>::const_iterator>);
     {
+        std::pair<int, int> pair;
         ludaed::unordered_map<int, int> map;
         std::cout << SIZE_MAX << " " << ULONG_MAX << std::endl;
         ludaed::detail::node<A> node1;

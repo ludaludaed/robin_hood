@@ -1877,9 +1877,6 @@ int main() {
 
         ludaed::unordered_map<std::string, int> map;
         for (int i = 0; i < 25; ++i) {
-            if (i == 20) {
-                std::cout << i << std::endl;
-            }
             map[std::to_string(i)] = i;
         }
 

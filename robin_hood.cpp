@@ -680,6 +680,14 @@ namespace ludaed {
                     empty_(kEmptyMarker),
                     hash_(kDefaultHash) {}
 
+            template<typename ...Args>
+            explicit node(hash_type hash, Args &&...args)
+                    :
+                    hash_(hash),
+                    empty_(kNoEmptyMarker) {
+                value_.construct(std::forward<Args>(args)...);
+            }
+
             node(const node &other) noexcept(std::is_nothrow_copy_constructible_v<value_type>)
                     :
                     empty_(other.empty_),
@@ -844,47 +852,6 @@ namespace ludaed {
                 return current_capacity;
             }
 
-            void _shift_up(size_type index) {
-                node insertion_node(std::move(data_[index]));
-                size_type distance = 1;
-                index = _next_index(index);
-                while (!data_[index].empty()) {
-                    if (_distance_to_ideal_bucket(index) < distance) {
-                        distance = _distance_to_ideal_bucket(index);
-                        data_[index].swap(insertion_node);
-                    }
-                    distance++;
-                    index = _next_index(index);
-                }
-                data_[index].swap(insertion_node);
-            };
-
-            void _insertion_helper(node &insertion_node) {
-                size_type distance = 0;
-                size_type index = _hash_to_index(insertion_node.hash());
-                while (!data_[index].empty()) {
-                    if (_distance_to_ideal_bucket(index) < distance) {
-                        distance = _distance_to_ideal_bucket(index);
-                        data_[index].swap(insertion_node);
-                    }
-                    distance++;
-                    index = _next_index(index);
-                }
-                data_[index].swap(insertion_node);
-            };
-
-            void _shift_down(size_type index) {
-                size_type prior_index = index;
-                size_type current_index = _next_index(index);
-
-                while (!data_[current_index].empty() &&
-                       _distance_to_ideal_bucket(current_index) != 0) {
-                    data_[prior_index] = std::move(data_[current_index]);
-                    prior_index = current_index;
-                    current_index = _next_index(current_index);
-                }
-            }
-
             void _rehash(size_type new_capacity) {
                 if (new_capacity > data_.size()) {
                     hash_table rehashing_table(new_capacity,
@@ -933,25 +900,48 @@ namespace ludaed {
                 return _find_index(key, hash);
             }
 
+            void _backward_shift(size_type index) {
+                size_type prior_index = index;
+                size_type current_index = _next_index(index);
+
+                while (!data_[current_index].empty() &&
+                       _distance_to_ideal_bucket(current_index) != 0) {
+                    data_[prior_index] = std::move(data_[current_index]);
+                    prior_index = current_index;
+                    current_index = _next_index(current_index);
+                }
+            }
+
             size_type _erase(const key_type &key) {
                 size_type index = _find_index(key);
 
                 if (index != data_.size()) {
-                    _shift_down(index);
+                    _backward_shift(index);
                     --size_;
                     return 1;
                 }
                 return 0;
             }
 
+            void _insertion_helper(node &insertion_node) {
+                size_type distance = 0;
+                size_type index = _hash_to_index(insertion_node.hash());
+                while (!data_[index].empty()) {
+                    if (_distance_to_ideal_bucket(index) < distance) {
+                        distance = _distance_to_ideal_bucket(index);
+                        data_[index].swap(insertion_node);
+                    }
+                    distance++;
+                    index = _next_index(index);
+                }
+                data_[index].swap(insertion_node);
+            };
+
             void _insert(node &&insertion_node) {
                 const key_type &key = key_selector_function_(insertion_node.value());
                 size_type index = _hash_to_index(insertion_node.hash());
 
-                if (!data_[index].empty()) {
-                    _shift_up(index);
-                }
-                data_[index] = std::move(insertion_node);
+                _insertion_helper(insertion_node);
                 size_++;
             }
 
@@ -976,13 +966,11 @@ namespace ludaed {
                     if (_try_to_rehash()) {
                         index = _hash_to_index(hash);
                     }
-                    if (!data_[index].empty()) {
-                        _shift_up(index);
-                    }
                     has_key = false;
                 }
 
-                data_[index].set_data(hash, std::forward<Args>(args)...);
+                node insertion_node(hash, std::forward<Args>(args)...);
+                _insertion_helper(insertion_node);
                 size_++;
 
                 auto first = data_.data();
@@ -1916,6 +1904,12 @@ int main() {
             }
             std::cout << item.first << " " << item.second << " "
                       << res << std::endl;
+        }
+
+        for (int i = 0; i < 73; ++i) {
+            if (!map.contains(std::to_string(i))) {
+                std::cout << i << std::endl;
+            }
         }
     }
     return 0;

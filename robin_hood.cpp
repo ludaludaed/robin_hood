@@ -840,16 +840,16 @@ namespace ludaed {
                 }
             }
 
-            size_type _size_to_rehash() const {
-                return load_factor_ * data_.size();
-            }
-
             size_type _next_capacity(size_type needed_capacity) const {
                 size_type current_capacity = data_.size();
                 while (needed_capacity >= current_capacity) {
                     current_capacity = grow_policy_function_(current_capacity);
                 }
                 return current_capacity;
+            }
+
+            size_type _size_to_rehash() const {
+                return load_factor_ * data_.size();
             }
 
             void _rehash(size_type new_capacity) {
@@ -923,7 +923,7 @@ namespace ludaed {
                 return 0;
             }
 
-            void _insertion_helper(node &insertion_node) {
+            void _insertion_helper(node &&insertion_node) {
                 size_type distance = 0;
                 size_type index = _hash_to_index(insertion_node.hash());
                 while (!data_[index].empty()) {
@@ -941,7 +941,7 @@ namespace ludaed {
                 const key_type &key = key_selector_function_(insertion_node.value());
                 size_type index = _hash_to_index(insertion_node.hash());
 
-                _insertion_helper(insertion_node);
+                _insertion_helper(std::move(insertion_node));
                 size_++;
             }
 
@@ -970,7 +970,7 @@ namespace ludaed {
                 }
 
                 node insertion_node(hash, std::forward<Args>(args)...);
-                _insertion_helper(insertion_node);
+                _insertion_helper(std::move(insertion_node));
                 size_++;
 
                 auto first = data_.data();
@@ -1410,6 +1410,7 @@ namespace ludaed {
 
             private:
                 using node_pointer = typename std::conditional<std::is_const<TItem>::value, const node *, node *>::type;
+
             private:
                 node_pointer first_;
                 node_pointer last_;
@@ -1865,33 +1866,13 @@ namespace ludaed {
     };
 }
 
-struct A {
-    std::string a;
-
-    explicit A(std::string a) : a(std::move(a)) {}
-
-
-//    A &operator=(const A &other) = default;
-
-};
-
-std::ostream &operator<<(std::ostream &stream, A &data) {
-    stream << data.a;
-    return stream;
-}
-
 int main() {
     static_assert(std::bidirectional_iterator<ludaed::unordered_map<int, int>::iterator>);
     {
 
         ludaed::unordered_map<std::string, int> map;
-        for (int i = 0; i < 73; ++i) {
-            if (i == 50) {
-                map.insert({std::to_string(i), i});
-            } else {
-//                map[std::to_string(i)] = i;
-                map.insert({std::to_string(i), i});
-            }
+        for (int i = 0; i < 10000; ++i) {
+            map.insert({std::to_string(i), i});
         }
 
         for (const auto &item: map) {
@@ -1906,7 +1887,7 @@ int main() {
                       << res << std::endl;
         }
 
-        for (int i = 0; i < 73; ++i) {
+        for (int i = 0; i < 10000; ++i) {
             if (!map.contains(std::to_string(i))) {
                 std::cout << i << std::endl;
             }

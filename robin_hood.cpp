@@ -240,12 +240,14 @@ namespace ludaed {
                         allocator_ = std::move(other.allocator_);
                     }
                     data_ = other.data_;
+                    size_ = other.size_;
                     other.data_ = nullptr;
                     other.size_ = 0;
                 } else {
                     if (allocator_ == other.allocator_) {
                         _deallocate_and_destroy_data(allocator_, data_, size_);
                         data_ = other.data_;
+                        size_ = other.size_;
                         other.data_ = nullptr;
                         other.size_ = 0;
                     } else {
@@ -264,10 +266,11 @@ namespace ludaed {
                             }
                         }
                         data_ = new_data;
+                        size_ = other.size_;
+                        return *this;
                         other.clear();
                     }
                 }
-                size_ = other.size_;
                 return *this;
             }
 
@@ -375,6 +378,10 @@ namespace ludaed {
             }
 
             pointer data() noexcept {
+                return data_;
+            }
+
+            const_pointer data() const noexcept {
                 return data_;
             }
 
@@ -735,7 +742,10 @@ namespace ludaed {
             }
 
             void swap(node &other) {
-                std::swap(*value_, *other.value_);
+                value_type temp(*value_);
+                value_.construct(std::move(*other.value_));
+                other.value_.construct(std::move(temp));
+//                std::swap(*value_, *other.value_);
                 std::swap(hash_, other.hash_);
                 std::swap(empty_, other.empty_);
             }
@@ -764,7 +774,7 @@ namespace ludaed {
                 class GrowPolicy,
                 class Allocator>
         class hash_table {
-            template<typename TItem>
+            template<typename TNodeItem, typename TItem>
             class hash_table_iterator;
 
             using node = node<TValue>;
@@ -789,8 +799,8 @@ namespace ludaed {
             using key_selector = KeySelector;
             using grow_policy = GrowPolicy;
 
-            using iterator = hash_table_iterator<TValue>;
-            using const_iterator = hash_table_iterator<const TValue>;
+            using iterator = hash_table_iterator<node, TValue>;
+            using const_iterator = hash_table_iterator<const node, const TValue>;
 
             using allocator_type = Allocator;
 
@@ -808,10 +818,10 @@ namespace ludaed {
 
         private:
             size_type _hash_to_index(size_t hash) const {
-                return hash % data_.size();
+                return hash % std::max(data_.size(), size_type(1));
             }
 
-            size_type _distance_to_ideal_bucket(size_type index) {
+            size_type _distance_to_ideal_bucket(size_type index) const {
                 return index - _hash_to_index(data_[index].hash());
             }
 
@@ -819,7 +829,7 @@ namespace ludaed {
                 return load_factor_ * data_.size();
             }
 
-            size_type _next_capacity(size_type needed_capacity) {
+            size_type _next_capacity(size_type needed_capacity) const {
                 size_type current_capacity = data_.size();
                 while (needed_capacity >= current_capacity) {
                     current_capacity = grow_policy_function_(current_capacity);
@@ -857,7 +867,7 @@ namespace ludaed {
                                                key_equal_function_,
                                                data_.get_allocator());
 
-                    for (const auto &item: data_) {
+                    for (auto &item: data_) {
                         if (!item.empty()) {
                             rehashing_table._insert(std::move(item));
                         }
@@ -870,12 +880,12 @@ namespace ludaed {
                 if (size_ < _size_to_rehash()) {
                     return false;
                 }
-                _rehash(grow_policy_function_(data_.size()));
+                _rehash(grow_policy_function_(std::max(data_.size(), size_type(1))));
                 return true;
             }
 
         protected:
-            size_type _find_index(const key_type &key, size_t hash) {
+            size_type _find_index(const key_type &key, size_t hash) const {
                 size_type index = _hash_to_index(hash);
                 size_type distance = 0;
 
@@ -885,7 +895,7 @@ namespace ludaed {
                         return data_.size();
                     }
                     if (data_[index].hash() == hash &&
-                        key_equal_function_(data_[index], key)) {
+                        key_equal_function_(key_selector_function_(data_[index].value()), key)) {
                         return index;
                     }
                     index++;
@@ -894,7 +904,7 @@ namespace ludaed {
                 return data_.size();
             }
 
-            size_type _find_index(const key_type &key) {
+            size_type _find_index(const key_type &key) const {
                 size_t hash = key_hash_function_(key);
                 return _find_index(key, hash);
             }
@@ -1092,13 +1102,6 @@ namespace ludaed {
                 return data_.get_allocator();
             }
 
-            void reserve(size_type new_capacity) {
-                size_type next_capacity = _next_capacity(new_capacity);
-                if (new_capacity > data_.size()) {
-                    _rehash(next_capacity);
-                }
-            }
-
             std::pair<iterator, bool> insert(const value_type &value) {
                 return _insert(value);
             }
@@ -1141,6 +1144,19 @@ namespace ludaed {
                 return _insert(value_type(std::forward<Args>(args)...)).first();
             }
 
+            template<class K, class... Args>
+            std::pair<iterator, bool> try_emplace(K &&key, Args &&... args) {
+                return _insert(key, std::piecewise_construct,
+                               std::forward_as_tuple(std::forward<K>(key)),
+                               std::forward_as_tuple(std::forward<Args>(args)...));
+            }
+
+            template<class K, class... Args>
+            iterator try_emplace_hint(const_iterator hint, K &&key, Args &&... args) {
+                (void) hint;
+                return try_emplace(std::forward<K>(key), std::forward<Args>(args)...).first;
+            }
+
             iterator erase(iterator position) {
                 if (position == end()) {
                     return end();
@@ -1175,6 +1191,8 @@ namespace ludaed {
                 return 0;
             }
 
+            // TODO: One more methods of 'count'
+
             iterator find(const key_type &key) {
                 return mutable_iterator(static_cast<const hash_table *>(this)->find(key));
             }
@@ -1189,11 +1207,13 @@ namespace ludaed {
                 return const_iterator(&data_[index], first, last);
             }
 
-            //TODO: Two more methods to find
+            //TODO: Two more methods of find
 
             bool contains(const key_type &key) const {
                 return count(key) == 1;
             }
+
+            // TODO: One more methods of 'contains'
 
             std::pair<iterator, iterator> equal_range(const key_type &key) {
                 iterator founded = find(key);
@@ -1205,7 +1225,7 @@ namespace ludaed {
                 return std::make_pair(founded, std::next(founded));
             }
 
-            //TODO: Two more methods to equal_range
+            //TODO: Two more methods of equal_range
 
             size_type bucket_count() const {
                 return size_;
@@ -1229,6 +1249,13 @@ namespace ludaed {
 
             void rehash(size_type new_capacity) {
                 reserve(new_capacity);
+            }
+
+            void reserve(size_type new_capacity) {
+                size_type next_capacity = _next_capacity(new_capacity);
+                if (new_capacity > data_.size()) {
+                    _rehash(next_capacity);
+                }
             }
 
             hasher hash_function() const {
@@ -1288,7 +1315,11 @@ namespace ludaed {
             iterator begin() noexcept {
                 node_pointer first = data_.data();
                 node_pointer last = data_.data() + data_.size();
-                return iterator(first, first, last);
+                node_pointer current = first;
+                while (current->empty() && current != last) {
+                    ++current;
+                }
+                return iterator(current, first, last);
             }
 
             iterator end() noexcept {
@@ -1301,14 +1332,18 @@ namespace ludaed {
                 return cbegin();
             }
 
-            iterator end() const noexcept {
+            const_iterator end() const noexcept {
                 return cend();
             }
 
             const_iterator cbegin() const noexcept {
                 node_pointer first = data_.data();
                 node_pointer last = data_.data() + data_.size();
-                return const_iterator(first, first, last);
+                node_pointer current = first;
+                while (current->empty() && current != last) {
+                    ++current;
+                }
+                return const_iterator(current, first, last);
             }
 
             const_iterator cend() const noexcept {
@@ -1320,7 +1355,11 @@ namespace ludaed {
             iterator rbegin() noexcept {
                 node_pointer first = data_.data();
                 node_pointer last = data_.data() + data_.size();
-                return iterator(last - 1, first, last);
+                node_pointer current = last;
+                while (current->empty() && current != first - 1) {
+                    --current;
+                }
+                return iterator(current, first, last);
             }
 
             iterator rend() noexcept {
@@ -1332,7 +1371,11 @@ namespace ludaed {
             const_iterator rbegin() const noexcept {
                 node_pointer first = data_.data();
                 node_pointer last = data_.data() + data_.size();
-                return const_iterator(last - 1, first, last);
+                node_pointer current = last;
+                while (current->empty() && current != first - 1) {
+                    --current;
+                }
+                return const_iterator(current, first, last);
             }
 
             const_iterator rend() const noexcept {
@@ -1342,7 +1385,7 @@ namespace ludaed {
             }
 
         private:
-            template<typename TItem>
+            template<typename TNodeItem, typename TItem>
             class hash_table_iterator {
                 friend class hash_table;
 
@@ -1352,6 +1395,9 @@ namespace ludaed {
                 using difference_type = std::ptrdiff_t;
                 using reference = value_type &;
                 using pointer = value_type *;
+
+            private:
+                using node_pointer = TNodeItem *;
 
             private:
                 node_pointer first_;
@@ -1469,7 +1515,7 @@ namespace ludaed {
             using value_type = TValue;
 
         public:
-            key_type &operator()(const std::pair<key_type, value_type> &pair) noexcept {
+            const key_type &operator()(const std::pair<key_type, value_type> &pair) const noexcept {
                 return pair.first;
             }
         };
@@ -1639,10 +1685,6 @@ namespace ludaed {
             return hash_table_.size();
         }
 
-        void clear() {
-            hash_table_.clear();
-        }
-
         std::pair<iterator, bool> insert(const value_type &value) {
             return hash_table_.insert(value);
         }
@@ -1709,11 +1751,11 @@ namespace ludaed {
         }
 
         mapped_type &operator[](const key_type &key) {
-            return hash_table_.find(key)->second;
+            return hash_table_.try_emplace(key).first->second;
         }
 
         mapped_type &operator[](key_type &&key) {
-            return hash_table_.find(key)->second;
+            return hash_table_.try_emplace(std::move(key)).first->second;
         }
 
         mapped_type &at(const key_type &key) {
@@ -1724,7 +1766,86 @@ namespace ludaed {
             return hash_table_.find(key)->second;
         }
 
+        size_type count(const key_type &key) const {
+            return hash_table_.count(key);
+        }
 
+        // TODO: One more methods of 'count'
+
+        iterator find(const key_type &key) {
+            return hash_table_.find(key);
+        }
+
+        const_iterator find(const key_type &key) const {
+            return hash_table_.find(key);
+        }
+
+        //TODO: Two more methods of find
+
+        bool contains(const key_type &key) {
+            return hash_table_.contains(key);
+        }
+
+        // TODO: One more methods of 'contains'
+
+        std::pair<iterator, iterator> equal_range(const key_type &key) {
+            return hash_table_.equal_range(key);
+        }
+
+        std::pair<const_iterator, const_iterator> equal_range(const key_type &key) const {
+            const_iterator founded = find(key);
+            return hash_table_.equal_range(key);
+        }
+
+        //TODO: Two more methods of equal_range
+
+        size_type bucket_count() const {
+            return hash_table_.bucket_count();
+        }
+
+        size_type max_bucket_count() const {
+            return hash_table_.max_bucket_count();
+        }
+
+        float load_factor() const {
+            return hash_table_.load_factor();
+        }
+
+        float max_load_factor() const {
+            return hash_table_.max_load_factor();
+        }
+
+        void max_load_factor(float load_factor) {
+            hash_table_.max_load_factor(load_factor);
+        }
+
+        void rehash(size_type new_capacity) {
+            hash_table_.rehash(new_capacity);
+        }
+
+        void reserve(size_type new_capacity) {
+            hash_table_.reserve(new_capacity);
+        }
+
+        hasher hash_function() const {
+            return hash_table_.hash_function();
+        }
+
+        key_equal key_eq() const {
+            return hash_table_.key_eq();
+        }
+
+        bool operator==(const unordered_map &other) const {
+            return hash_table_ == other.hash_table_;
+        }
+
+        bool operator!=(const hash_table &other) const {
+            return hash_table_ != other.hash_table_;
+        }
+
+        void clear() {
+            hash_table_.clear();
+        }
     };
 }
 
@@ -1744,36 +1865,15 @@ std::ostream &operator<<(std::ostream &stream, A &data) {
 }
 
 int main() {
-    static_assert(std::random_access_iterator<ludaed::detail::array<int>::const_iterator>);
+    static_assert(std::bidirectional_iterator<ludaed::unordered_map<int, int>::iterator>);
     {
-        std::pair<int, int> pair;
+
         ludaed::unordered_map<int, int> map;
-        std::cout << SIZE_MAX << " " << ULONG_MAX << std::endl;
-        ludaed::detail::node<A> node1;
-        node1.set_data(1, "11111");
-        ludaed::detail::node<A> node2(node1);
-        node2.set_data(1, "22222");
-        node1.swap(node2);
-        std::cout << node1.value() << " " << node2.value();
+        map[0] = 1;
 
-        ludaed::detail::array<int> array;
-        array.resize(3);
-        for (auto &item: array) {
-            item = 10;
+        for (const auto &item: map) {
+            std::cout << item.first << item.second;
         }
-        array.resize(5, 9);
-        for (const auto &item: array) {
-            std::cout << item << " ";
-        }
-        array.resize(100, 9);
-        for (const auto &item: array) {
-            std::cout << item << " ";
-        }
-
-        ludaed::detail::array<int> a;
-
-        std::swap(array, a);
-        array.swap(a);
     }
     return 0;
 }

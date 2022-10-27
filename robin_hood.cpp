@@ -4,6 +4,7 @@
 #include <list>
 #include <cassert>
 #include <cstdint>
+#include <string>
 
 namespace ludaed {
 
@@ -742,12 +743,9 @@ namespace ludaed {
             }
 
             void swap(node &other) {
-                value_type temp(*value_);
-                value_.construct(std::move(*other.value_));
-                other.value_.construct(std::move(temp));
-//                std::swap(*value_, *other.value_);
-                std::swap(hash_, other.hash_);
-                std::swap(empty_, other.empty_);
+                node temp = *this;
+                *this = other;
+                other = temp;
             }
 
             bool empty() const {
@@ -817,12 +815,21 @@ namespace ludaed {
             array data_;
 
         private:
+            size_type _next_index(size_type index) const {
+                return (index + 1) % data_.size();
+            }
+
             size_type _hash_to_index(size_t hash) const {
                 return hash % std::max(data_.size(), size_type(1));
             }
 
             size_type _distance_to_ideal_bucket(size_type index) const {
-                return index - _hash_to_index(data_[index].hash());
+                size_type hashed_index = _hash_to_index(data_[index].hash());
+                if (hashed_index > index) {
+                    return data_.size() - hashed_index + index;
+                } else {
+                    return index - hashed_index;
+                }
             }
 
             size_type _size_to_rehash() const {
@@ -846,7 +853,7 @@ namespace ludaed {
                         distance = _distance_to_ideal_bucket(index);
                     }
                     distance++;
-                    index++;
+                    index = _next_index(index);
                 }
                 data_[index].swap(insertion_node);
             };
@@ -856,7 +863,7 @@ namespace ludaed {
                        !data_[index + 1].empty() &&
                        _distance_to_ideal_bucket(index + 1) != 0) {
                     data_[index] = std::move(data_[index + 1]);
-                    index++;
+                    index = _next_index(index);;
                 }
             }
 
@@ -898,7 +905,7 @@ namespace ludaed {
                         key_equal_function_(key_selector_function_(data_[index].value()), key)) {
                         return index;
                     }
-                    index++;
+                    index = _next_index(index);;
                     distance++;
                 }
                 return data_.size();
@@ -1867,14 +1874,17 @@ int main() {
     static_assert(std::bidirectional_iterator<ludaed::unordered_map<int, int>::iterator>);
     {
 
-        ludaed::unordered_map<int, int> map;
-        for (int i = 0; i < 100; ++i) {
-            map[i] = i;
+        ludaed::unordered_map<std::string, int> map;
+        for (int i = 0; i < 25; ++i) {
+            if (i == 20) {
+                std::cout << i << std::endl;
+            }
+            map[std::to_string(i)] = i;
         }
 
         for (const auto &item: map) {
-            bool res = const_cast<const ludaed::unordered_map<int, int> &>(map).find(item.first) ==
-                       const_cast<const ludaed::unordered_map<int, int> &>(map).end();
+            bool res = const_cast<const ludaed::unordered_map<std::string, int> &>(map).find(item.first) ==
+                       const_cast<const ludaed::unordered_map<std::string, int> &>(map).end();
             std::cout << item.first << " " << item.second << " "
                       << res << std::endl;
         }

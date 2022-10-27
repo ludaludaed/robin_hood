@@ -882,6 +882,7 @@ namespace ludaed {
             void _backward_shift(size_type index) {
                 size_type prior_index = index;
                 size_type current_index = _next_index(index);
+
                 data_[prior_index].clear();
                 while (!data_[current_index].empty() &&
                        _distance_to_ideal_bucket(current_index) > 0) {
@@ -905,6 +906,7 @@ namespace ludaed {
             void _insertion_helper(node &&insertion_node) {
                 size_type distance = 0;
                 size_type index = _hash_to_index(insertion_node.hash());
+
                 while (!data_[index].empty()) {
                     if (_distance_to_ideal_bucket(index) < distance) {
                         distance = _distance_to_ideal_bucket(index);
@@ -1038,11 +1040,7 @@ namespace ludaed {
                 other.clear();
             }
 
-            hash_table(hash_table &&other, const allocator_type &allocator) noexcept(
-            std::is_nothrow_move_constructible<hasher>::value &&
-            std::is_nothrow_move_constructible<key_equal>::value &&
-            std::is_nothrow_move_constructible<growth_policy>::value &&
-            std::is_nothrow_move_constructible<array>::value)
+            hash_table(hash_table &&other, const allocator_type &allocator)
                     :
                     data_(std::move(other.data_), allocator),
                     size_(other.size_),

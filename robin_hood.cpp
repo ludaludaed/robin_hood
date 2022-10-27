@@ -861,7 +861,7 @@ namespace ludaed {
             void _shift_down(size_type index) {
                 size_type prior_index = index;
                 size_type current_index = _next_index(index);
-                
+
                 while (!data_[current_index].empty() &&
                        _distance_to_ideal_bucket(current_index) != 0) {
                     data_[prior_index] = std::move(data_[current_index]);
@@ -898,8 +898,8 @@ namespace ludaed {
                 size_type index = _hash_to_index(hash);
                 size_type distance = 0;
 
-                while (index < data_.size()) {
-                    if (data_[index].empty() ||
+                while (true) {
+                    if (data_.empty() || data_[index].empty() ||
                         distance > _distance_to_ideal_bucket(index)) {
                         return data_.size();
                     }
@@ -910,7 +910,6 @@ namespace ludaed {
                     index = _next_index(index);;
                     distance++;
                 }
-                return data_.size();
             }
 
             size_type _find_index(const key_type &key) const {
@@ -1885,8 +1884,13 @@ int main() {
         }
 
         for (const auto &item: map) {
+
             bool res = const_cast<const ludaed::unordered_map<std::string, int> &>(map).find(item.first) ==
                        const_cast<const ludaed::unordered_map<std::string, int> &>(map).end();
+
+            if (res == 1) {
+                const_cast<const ludaed::unordered_map<std::string, int> &>(map).find(item.first);
+            }
             std::cout << item.first << " " << item.second << " "
                       << res << std::endl;
         }

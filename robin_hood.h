@@ -812,6 +812,7 @@ namespace ludaed {
 
             size_type _distance_to_ideal_bucket(size_type index) const {
                 size_type hashed_index = _hash_to_index(data_[index].hash());
+
                 if (hashed_index > index) {
                     return data_.size() - hashed_index + index;
                 } else {
@@ -821,6 +822,7 @@ namespace ludaed {
 
             size_type _next_capacity(size_type needed_capacity) const {
                 size_type current_capacity = data_.size();
+
                 while (needed_capacity >= current_capacity) {
                     current_capacity = growth_policy_function_(current_capacity);
                 }
@@ -850,9 +852,10 @@ namespace ludaed {
             bool _try_to_rehash() {
                 if (size_ < _size_to_rehash()) {
                     return false;
+                } else {
+                    _rehash(growth_policy_function_(std::max(data_.size(), size_type(1))));
+                    return true;
                 }
-                _rehash(growth_policy_function_(std::max(data_.size(), size_type(1))));
-                return true;
             }
 
             size_type _find_index(const key_type &key, size_t hash) const {
@@ -940,6 +943,7 @@ namespace ludaed {
             std::pair<iterator, bool> _insert(const key_type &key, Args &&... args) {
                 size_t hash = key_hash_function_(key);
                 bool has_key = true;
+
                 size_type index = _hash_to_index(hash);
                 size_type insertion_index = _find_index(key, hash);
 
@@ -1059,6 +1063,7 @@ namespace ludaed {
                 data_ = other.data_;
                 size_ = other.size_;
                 load_factor_ = other.load_factor_;
+
                 key_hash_function_ = other.key_hash_function_;
                 key_equal_function_ = other.key_equal_function_;
                 key_selector_function_ = other.key_selector_function_;
@@ -1073,6 +1078,7 @@ namespace ludaed {
                 data_ = std::move(other.data_);
                 size_ = other.size_;
                 load_factor_ = other.load_factor_;
+
                 key_hash_function_ = std::move(other.key_hash_function_);
                 key_equal_function_ = std::move(other.key_equal_function_);
                 key_selector_function_ = std::move(other.key_selector_function_);
@@ -1188,11 +1194,13 @@ namespace ludaed {
 
             const_iterator find(const key_type &key) const {
                 size_type index = _find_index(key);
+
                 if (index == data_.size()) {
                     return end();
                 }
                 auto first = data_.data();
                 auto last = data_.data() + data_.size();
+
                 return const_iterator(&data_[index], first, last);
             }
 
@@ -1242,6 +1250,7 @@ namespace ludaed {
 
             void reserve(size_type new_capacity) {
                 size_type next_capacity = _next_capacity(new_capacity);
+
                 if (new_capacity > data_.size()) {
                     _rehash(next_capacity);
                 }

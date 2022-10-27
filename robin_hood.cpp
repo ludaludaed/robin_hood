@@ -1,7 +1,5 @@
 #include <iostream>
-#include <unordered_map>
 #include <utility>
-#include <list>
 #include <cassert>
 #include <cstdint>
 #include <string>
@@ -1501,18 +1499,338 @@ namespace ludaed {
                 }
             };
         };
+    }
 
-        template<typename TKey>
-        class unordered_set_key_selector {
+    template<class TKey,
+            class KeyHash = std::hash<TKey>,
+            class KeyEqual = std::equal_to<TKey>,
+            class Allocator = std::allocator<TKey>>
+    class unordered_set {
+
+        class key_selector {
         public:
             using key_type = TKey;
 
         public:
-            key_type &operator()(const key_type &pair) noexcept {
-                return pair;
+            key_type operator()(key_type &&p) const noexcept {
+                return std::move(p.first);
+            }
+
+            const key_type &operator()(const key_type &p) const noexcept {
+                return p.first;
             }
         };
-    }
+
+        using hash_table = detail::hash_table<TKey,
+                key_selector, KeyHash, KeyEqual, detail::grow_power_of_two_policy, Allocator>;
+
+    public:
+        using key_type = typename hash_table::key_type;
+        using value_type = typename hash_table::value_type;
+
+        using size_type = typename hash_table::size_type;
+        using difference_type = typename hash_table::difference_type;
+
+        using hasher = typename hash_table::hasher;
+        using key_equal = typename hash_table::key_equal;
+        using allocator_type = typename hash_table::allocator_type;
+
+        using reference = typename hash_table::reference;
+        using const_reference = typename hash_table::const_reference;
+
+        using pointer = typename hash_table::pointer;
+        using const_pointer = typename hash_table::const_pointer;
+
+        using iterator = typename hash_table::iterator;
+        using const_iterator = typename hash_table::const_iterator;
+
+    private:
+        hash_table hash_table_;
+
+    public:
+        unordered_set()
+                :
+                hash_table_() {}
+
+        explicit unordered_set(size_type capacity,
+                               const hasher &key_hash_function = hasher{},
+                               const key_equal &key_equal_function = key_equal{},
+                               const allocator_type &allocator = allocator_type{})
+                : hash_table_(capacity, key_hash_function, key_equal_function, allocator) {}
+
+        unordered_set(size_type capacity, const allocator_type &allocator)
+                : hash_table_(capacity, hasher{}, key_equal{}, allocator) {}
+
+        unordered_set(size_type capacity, const hasher &key_hash_function, const allocator_type &allocator)
+                : hash_table_(capacity, key_hash_function, key_equal{}, allocator) {}
+
+        explicit unordered_set(const allocator_type &allocator)
+                : hash_table_(0, hasher{}, key_equal{}, allocator) {}
+
+        template<typename InputIt>
+        unordered_set(InputIt begin, InputIt end,
+                      size_type capacity = 0,
+                      const hasher &key_hash_function = hasher{},
+                      const key_equal &key_equal_function = key_equal{},
+                      const allocator_type &allocator = allocator_type{})
+                : hash_table_(begin, end, capacity, key_hash_function, key_equal_function, allocator) {}
+
+        template<typename InputIt>
+        unordered_set(InputIt begin, InputIt end,
+                      size_type capacity = 0,
+                      const allocator_type &allocator = allocator_type{})
+                : hash_table_(begin, end, capacity, hasher{}, key_equal{}, allocator) {}
+
+        template<typename InputIt>
+        unordered_set(InputIt begin, InputIt end,
+                      size_type capacity = 0,
+                      const hasher &key_hash_function = hasher{},
+                      const allocator_type &allocator = allocator_type{})
+                : hash_table_(begin, end, capacity, key_hash_function, key_equal{}, allocator) {}
+
+        unordered_set(std::initializer_list<value_type> list,
+                      size_type capacity = 0,
+                      const hasher &key_hash_function = hasher{},
+                      const key_equal &key_equal_function = key_equal{},
+                      const allocator_type &allocator = allocator_type{})
+                : hash_table_(list.begin(), list.end(), capacity, key_hash_function, key_equal_function, allocator) {}
+
+        unordered_set(std::initializer_list<value_type> list,
+                      size_type capacity = 0,
+                      const allocator_type &allocator = allocator_type{})
+                : hash_table_(list.begin(), list.end(), capacity, hasher{}, key_equal{}, allocator) {}
+
+        unordered_set(std::initializer_list<value_type> list,
+                      size_type capacity = 0,
+                      const hasher &key_hash_function = hasher{},
+                      const allocator_type &allocator = allocator_type{})
+                : hash_table_(list.begin(), list.end(), capacity, key_hash_function, key_equal{}, allocator) {}
+
+        unordered_set(const unordered_set &other) noexcept(std::is_nothrow_copy_constructible<hash_table>::value)
+                : hash_table_(other.hash_table_) {}
+
+        unordered_set(const unordered_set &other, const allocator_type &allocator)
+                : hash_table_(other.hash_table_, allocator) {}
+
+        unordered_set(unordered_set &&other) noexcept(std::is_nothrow_move_constructible<hash_table>::value)
+                : hash_table_(std::move(other.hash_table_)) {}
+
+        unordered_set(unordered_set &&other, const allocator_type &allocator)
+                : hash_table_(std::move(other.hash_table_), allocator) {}
+
+        unordered_set &operator=(const unordered_set &other) {
+            hash_table_ = other.hash_table_;
+            return *this;
+        }
+
+        unordered_set &operator=(unordered_set &&other) noexcept(std::is_nothrow_move_assignable<hash_table>::value) {
+            hash_table_ = std::move(other.hash_table_);
+            return *this;
+        }
+
+        unordered_set &operator=(std::initializer_list<value_type> list) {
+            hash_table_ = list;
+            return *this;
+        }
+
+        allocator_type get_allocator() const {
+            return hash_table_.get_allocator();
+        }
+
+        iterator begin() noexcept {
+            return hash_table_.begin();
+        }
+
+        iterator end() noexcept {
+            return hash_table_.end();
+        }
+
+        const_iterator begin() const noexcept {
+            return hash_table_.begin();
+        }
+
+        const_iterator end() const noexcept {
+            return hash_table_.end();
+        }
+
+        const_iterator cbegin() const noexcept {
+            return hash_table_.cbegin();
+        }
+
+        const_iterator cend() const noexcept {
+            return hash_table_.cend();
+        }
+
+        iterator rbegin() noexcept {
+            return hash_table_.rbegin();
+        }
+
+        iterator rend() noexcept {
+            return hash_table_.rend();
+        }
+
+        const_iterator rbegin() const noexcept {
+            return hash_table_.rbegin();
+        }
+
+        const_iterator rend() const noexcept {
+            return hash_table_.rend();
+        }
+
+        bool empty() const noexcept {
+            return hash_table_.empty();
+        }
+
+        size_type size() const noexcept {
+            return hash_table_.size();
+        }
+
+        std::pair<iterator, bool> insert(const value_type &value) {
+            return hash_table_.insert(value);
+        }
+
+        template<class P, typename std::enable_if<std::is_constructible<value_type, P &&>::value>::type * = nullptr>
+        std::pair<iterator, bool> insert(P &&value) {
+            return hash_table_.emplace(std::forward<P>(value));
+        }
+
+        std::pair<iterator, bool> insert(value_type &&value) {
+            return hash_table_.insert(std::move(value));
+        }
+
+        iterator insert(const_iterator hint, const value_type &value) {
+            return hash_table_.insert(hint, value);
+        }
+
+        template<class P, typename std::enable_if<std::is_constructible<value_type, P &&>::value>::type * = nullptr>
+        iterator insert(const_iterator hint, P &&value) {
+            return hash_table_.emplace_hint(hint, std::forward<P>(value));
+        }
+
+        iterator insert(const_iterator hint, value_type &&value) {
+            return hash_table_.insert(hint, std::move(value));
+        }
+
+        template<class InputIt>
+        void insert(InputIt begin, InputIt end) {
+            hash_table_.insert(begin, end);
+        }
+
+        void insert(std::initializer_list<value_type> list) {
+            hash_table_.insert(list.begin(), list.end());
+        }
+
+        template<class... Args>
+        std::pair<iterator, bool> emplace(Args &&... args) {
+            return hash_table_.emplace(std::forward<Args>(args)...);
+        }
+
+        template<class... Args>
+        iterator emplace_hint(const_iterator hint, Args &&... args) {
+            return hash_table_.emplace_hint(hint, std::forward<Args>(args)...);
+        }
+
+        iterator erase(iterator position) {
+            return hash_table_.erase(position);
+        }
+
+        iterator erase(const_iterator position) {
+            return hash_table_.erase(position);
+        }
+
+        iterator erase(const_iterator begin, const_iterator end) {
+            return hash_table_.erase(begin, end);
+        }
+
+        size_type erase(const key_type &key) {
+            return hash_table_.erase(key);
+        }
+
+        void swap(unordered_set &other) {
+            other.hash_table_.swap(hash_table_);
+        }
+
+        size_type count(const key_type &key) const {
+            return hash_table_.count(key);
+        }
+
+        // TODO: One more methods of 'count'
+
+        iterator find(const key_type &key) {
+            return hash_table_.find(key);
+        }
+
+        const_iterator find(const key_type &key) const {
+            return hash_table_.find(key);
+        }
+
+        //TODO: Two more methods of find
+
+        bool contains(const key_type &key) {
+            return hash_table_.contains(key);
+        }
+
+        // TODO: One more methods of 'contains'
+
+        std::pair<iterator, iterator> equal_range(const key_type &key) {
+            return hash_table_.equal_range(key);
+        }
+
+        std::pair<const_iterator, const_iterator> equal_range(const key_type &key) const {
+            const_iterator founded = find(key);
+            return hash_table_.equal_range(key);
+        }
+
+        //TODO: Two more methods of equal_range
+
+        size_type bucket_count() const {
+            return hash_table_.bucket_count();
+        }
+
+        size_type max_bucket_count() const {
+            return hash_table_.max_bucket_count();
+        }
+
+        float load_factor() const {
+            return hash_table_.load_factor();
+        }
+
+        float max_load_factor() const {
+            return hash_table_.max_load_factor();
+        }
+
+        void max_load_factor(float load_factor) {
+            hash_table_.max_load_factor(load_factor);
+        }
+
+        void rehash(size_type new_capacity) {
+            hash_table_.rehash(new_capacity);
+        }
+
+        void reserve(size_type new_capacity) {
+            hash_table_.reserve(new_capacity);
+        }
+
+        hasher hash_function() const {
+            return hash_table_.hash_function();
+        }
+
+        key_equal key_eq() const {
+            return hash_table_.key_eq();
+        }
+
+        bool operator==(const unordered_set &other) const {
+            return hash_table_ == other.hash_table_;
+        }
+
+        bool operator!=(const hash_table &other) const {
+            return hash_table_ != other.hash_table_;
+        }
+
+        void clear() {
+            hash_table_.clear();
+        }
+    };
 
     template<class TKey,
             class TValue,
@@ -1869,7 +2187,6 @@ namespace ludaed {
 int main() {
     static_assert(std::bidirectional_iterator<ludaed::unordered_map<int, int>::iterator>);
     {
-
         ludaed::unordered_map<std::string, int> map;
         for (int i = 0; i < 100; ++i) {
             map.insert({std::to_string(i), i});

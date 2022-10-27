@@ -845,14 +845,27 @@ namespace ludaed {
             }
 
             void _shift_up(size_type index) {
-                size_type distance = 0;
                 node insertion_node(std::move(data_[index]));
-                distance++;
+                size_type distance = 1;
                 index = _next_index(index);
-                while (!insertion_node.empty()) {
-                    if (data_[index].empty() || _distance_to_ideal_bucket(index) < distance) {
-                        data_[index].swap(insertion_node);
+                while (!data_[index].empty()) {
+                    if (_distance_to_ideal_bucket(index) < distance) {
                         distance = _distance_to_ideal_bucket(index);
+                        data_[index].swap(insertion_node);
+                    }
+                    distance++;
+                    index = _next_index(index);
+                }
+                data_[index].swap(insertion_node);
+            };
+
+            void _insertion_helper(node &insertion_node) {
+                size_type distance = 0;
+                size_type index = _hash_to_index(insertion_node.hash());
+                while (!data_[index].empty()) {
+                    if (_distance_to_ideal_bucket(index) < distance) {
+                        distance = _distance_to_ideal_bucket(index);
+                        data_[index].swap(insertion_node);
                     }
                     distance++;
                     index = _next_index(index);
@@ -900,8 +913,8 @@ namespace ludaed {
                 size_type index = _hash_to_index(hash);
                 size_type distance = 0;
 
-                while (true) {
-                    if (data_.empty() || data_[index].empty() ||
+                while (!data_.empty()) {
+                    if (data_[index].empty() ||
                         distance > _distance_to_ideal_bucket(index)) {
                         return data_.size();
                     }
@@ -912,6 +925,7 @@ namespace ludaed {
                     index = _next_index(index);;
                     distance++;
                 }
+                return data_.size();
             }
 
             size_type _find_index(const key_type &key) const {
@@ -1884,7 +1898,7 @@ int main() {
 
         ludaed::unordered_map<std::string, int> map;
         for (int i = 0; i < 73; ++i) {
-            if (i == 72) {
+            if (i == 50) {
                 map.insert({std::to_string(i), i});
             } else {
 //                map[std::to_string(i)] = i;

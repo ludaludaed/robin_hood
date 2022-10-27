@@ -774,7 +774,7 @@ namespace ludaed {
                 class GrowPolicy,
                 class Allocator>
         class hash_table {
-            template<typename TNodeItem, typename TItem>
+            template<typename TItem>
             class hash_table_iterator;
 
             using node = node<TValue>;
@@ -799,8 +799,8 @@ namespace ludaed {
             using key_selector = KeySelector;
             using grow_policy = GrowPolicy;
 
-            using iterator = hash_table_iterator<node, TValue>;
-            using const_iterator = hash_table_iterator<const node, const TValue>;
+            using iterator = hash_table_iterator<TValue>;
+            using const_iterator = hash_table_iterator<const TValue>;
 
             using allocator_type = Allocator;
 
@@ -961,8 +961,8 @@ namespace ludaed {
                 data_[index].set_data(hash, std::forward<Args>(args)...);
                 size_++;
 
-                node_pointer first = data_.data();
-                node_pointer last = data_.data() + data_.size();
+                auto first = data_.data();
+                auto last = data_.data() + data_.size();
 
                 return std::make_pair(iterator(&data_[index], first, last), has_key);
             }
@@ -1202,8 +1202,8 @@ namespace ludaed {
                 if (index == data_.size()) {
                     return end();
                 }
-                node_pointer first = data_.data();
-                node_pointer last = data_.data() + data_.size();
+                auto first = data_.data();
+                auto last = data_.data() + data_.size();
                 return const_iterator(&data_[index], first, last);
             }
 
@@ -1307,15 +1307,15 @@ namespace ludaed {
             }
 
             iterator mutable_iterator(const_iterator position) const {
-                node_pointer first = data_.data();
-                node_pointer last = data_.data() + data_.size();
+                auto first = data_.data();
+                auto last = data_.data() + data_.size();
                 return iterator(const_cast<node_pointer>(position.data_), first, last);
             }
 
             iterator begin() noexcept {
-                node_pointer first = data_.data();
-                node_pointer last = data_.data() + data_.size();
-                node_pointer current = first;
+                auto first = data_.data();
+                auto last = data_.data() + data_.size();
+                auto current = first;
                 while (current->empty() && current != last) {
                     ++current;
                 }
@@ -1323,8 +1323,8 @@ namespace ludaed {
             }
 
             iterator end() noexcept {
-                node_pointer first = data_.data();
-                node_pointer last = data_.data() + data_.size();
+                auto first = data_.data();
+                auto last = data_.data() + data_.size();
                 return iterator(last, first, last);
             }
 
@@ -1337,9 +1337,9 @@ namespace ludaed {
             }
 
             const_iterator cbegin() const noexcept {
-                node_pointer first = data_.data();
-                node_pointer last = data_.data() + data_.size();
-                node_pointer current = first;
+                auto first = data_.data();
+                auto last = data_.data() + data_.size();
+                auto current = first;
                 while (current->empty() && current != last) {
                     ++current;
                 }
@@ -1347,15 +1347,15 @@ namespace ludaed {
             }
 
             const_iterator cend() const noexcept {
-                node_pointer first = data_.data();
-                node_pointer last = data_.data() + data_.size();
+                auto first = data_.data();
+                auto last = data_.data() + data_.size();
                 return const_iterator(last, first, last);
             }
 
             iterator rbegin() noexcept {
-                node_pointer first = data_.data();
-                node_pointer last = data_.data() + data_.size();
-                node_pointer current = last;
+                auto first = data_.data();
+                auto last = data_.data() + data_.size();
+                auto current = last;
                 while (current->empty() && current != first - 1) {
                     --current;
                 }
@@ -1363,15 +1363,15 @@ namespace ludaed {
             }
 
             iterator rend() noexcept {
-                node_pointer first = data_.data();
-                node_pointer last = data_.data() + data_.size();
+                auto first = data_.data();
+                auto last = data_.data() + data_.size();
                 return iterator(first - 1, first, last);
             }
 
             const_iterator rbegin() const noexcept {
-                node_pointer first = data_.data();
-                node_pointer last = data_.data() + data_.size();
-                node_pointer current = last;
+                auto first = data_.data();
+                auto last = data_.data() + data_.size();
+                auto current = last;
                 while (current->empty() && current != first - 1) {
                     --current;
                 }
@@ -1379,13 +1379,13 @@ namespace ludaed {
             }
 
             const_iterator rend() const noexcept {
-                node_pointer first = data_.data();
-                node_pointer last = data_.data() + data_.size();
+                auto first = data_.data();
+                auto last = data_.data() + data_.size();
                 return const_iterator(first - 1, first, last);
             }
 
         private:
-            template<typename TNodeItem, typename TItem>
+            template<typename TItem>
             class hash_table_iterator {
                 friend class hash_table;
 
@@ -1397,8 +1397,7 @@ namespace ludaed {
                 using pointer = value_type *;
 
             private:
-                using node_pointer = TNodeItem *;
-
+                using node_pointer = typename std::conditional<std::is_const<TItem>::value, const node *, node *>::type;
             private:
                 node_pointer first_;
                 node_pointer last_;
@@ -1869,10 +1868,15 @@ int main() {
     {
 
         ludaed::unordered_map<int, int> map;
-        map[0] = 1;
+        for (int i = 0; i < 100; ++i) {
+            map[i] = i;
+        }
 
         for (const auto &item: map) {
-            std::cout << item.first << item.second;
+            bool res = const_cast<const ludaed::unordered_map<int, int> &>(map).find(item.first) ==
+                       const_cast<const ludaed::unordered_map<int, int> &>(map).end();
+            std::cout << item.first << " " << item.second << " "
+                      << res << std::endl;
         }
     }
     return 0;

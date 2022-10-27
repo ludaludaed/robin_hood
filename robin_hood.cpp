@@ -1115,7 +1115,7 @@ namespace ludaed {
             }
 
             std::pair<iterator, bool> insert(value_type &&value) {
-                return _insert(value);
+                return _insert(std::move(value));
             }
 
             iterator insert(const_iterator hint, const value_type &value) {
@@ -1522,10 +1522,15 @@ namespace ludaed {
             using value_type = TValue;
 
         public:
-            const key_type &operator()(const std::pair<key_type, value_type> &pair) const noexcept {
-                return pair.first;
+            key_type operator()(std::pair<key_type, value_type> &&p) const noexcept {
+                return std::move(p.first);
+            }
+
+            const key_type &operator()(const std::pair<key_type, value_type> &p) const noexcept {
+                return p.first;
             }
         };
+
 
         using hash_table = detail::hash_table<std::pair<const TKey, TValue>,
                 key_selector, KeyHash, KeyEqual, detail::grow_power_of_two_policy, Allocator>;
@@ -1877,7 +1882,12 @@ int main() {
 
         ludaed::unordered_map<std::string, int> map;
         for (int i = 0; i < 25; ++i) {
-            map[std::to_string(i)] = i;
+            if (i == 18) {
+                map.insert({std::to_string(i), i});
+            } else {
+//                map[std::to_string(i)] = i;
+                map.insert({std::to_string(i), i});
+            }
         }
 
         for (const auto &item: map) {

@@ -890,8 +890,7 @@ namespace ludaed {
                 _rehash(grow_policy_function_(std::max(data_.size(), size_type(1))));
                 return true;
             }
-
-        protected:
+            
             size_type _find_index(const key_type &key, size_t hash) const {
                 size_type index = _hash_to_index(hash);
                 size_type distance = 0;

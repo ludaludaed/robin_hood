@@ -757,7 +757,7 @@ namespace ludaed {
                 class KeyHash,
                 class KeyEqual,
                 class Allocator,
-                class GrowPolicy>
+                class GrowthPolicy>
         class hash_table {
             template<typename TItem>
             class hash_table_iterator;
@@ -782,7 +782,7 @@ namespace ludaed {
             using hasher = KeyHash;
 
             using key_selector = KeySelector;
-            using grow_policy = GrowPolicy;
+            using growth_policy = GrowthPolicy;
 
             using iterator = hash_table_iterator<TValue>;
             using const_iterator = hash_table_iterator<const TValue>;
@@ -795,7 +795,7 @@ namespace ludaed {
             key_selector key_selector_function_{};
             hasher key_hash_function_{};
             key_equal key_equal_function_{};
-            grow_policy grow_policy_function_{};
+            growth_policy growth_policy_function_{};
 
             float load_factor_{kDefaultLoadFactor};
             size_type size_{0};
@@ -822,7 +822,7 @@ namespace ludaed {
             size_type _next_capacity(size_type needed_capacity) const {
                 size_type current_capacity = data_.size();
                 while (needed_capacity >= current_capacity) {
-                    current_capacity = grow_policy_function_(current_capacity);
+                    current_capacity = growth_policy_function_(current_capacity);
                 }
                 return current_capacity;
             }
@@ -851,7 +851,7 @@ namespace ludaed {
                 if (size_ < _size_to_rehash()) {
                     return false;
                 }
-                _rehash(grow_policy_function_(std::max(data_.size(), size_type(1))));
+                _rehash(growth_policy_function_(std::max(data_.size(), size_type(1))));
                 return true;
             }
 
@@ -970,7 +970,7 @@ namespace ludaed {
                     key_hash_function_(key_hash_function),
                     key_equal_function_(key_equal_function),
                     key_selector_function_(),
-                    grow_policy_function_() {
+                    growth_policy_function_() {
             }
 
             template<typename InputIt>
@@ -984,7 +984,7 @@ namespace ludaed {
                     key_hash_function_(key_hash_function),
                     key_equal_function_(key_equal_function),
                     key_selector_function_(),
-                    grow_policy_function_() {
+                    growth_policy_function_() {
                 insert(begin, end);
             }
 
@@ -998,7 +998,7 @@ namespace ludaed {
                     key_hash_function_(key_hash_function),
                     key_equal_function_(key_equal_function),
                     key_selector_function_(),
-                    grow_policy_function_() {
+                    growth_policy_function_() {
                 insert(list.begin(), list.end());
             }
 
@@ -1010,7 +1010,7 @@ namespace ludaed {
                     key_hash_function_(other.key_hash_function_),
                     key_equal_function_(other.key_equal_function_),
                     key_selector_function_(other.key_selector_function_),
-                    grow_policy_function_(other.grow_policy_function_) {}
+                    growth_policy_function_(other.growth_policy_function_) {}
 
             hash_table(const hash_table &other, const allocator_type &allocator)
                     :
@@ -1020,12 +1020,12 @@ namespace ludaed {
                     key_hash_function_(other.key_hash_function_),
                     key_equal_function_(other.key_equal_function_),
                     key_selector_function_(other.key_selector_function_),
-                    grow_policy_function_(other.grow_policy_function_) {}
+                    growth_policy_function_(other.growth_policy_function_) {}
 
             hash_table(hash_table &&other) noexcept(
             std::is_nothrow_move_constructible<hasher>::value &&
             std::is_nothrow_move_constructible<key_equal>::value &&
-            std::is_nothrow_move_constructible<grow_policy>::value &&
+            std::is_nothrow_move_constructible<growth_policy>::value &&
             std::is_nothrow_move_constructible<array>::value)
                     :
                     data_(std::move(other.data_)),
@@ -1034,14 +1034,14 @@ namespace ludaed {
                     key_hash_function_(std::move(other.key_hash_function_)),
                     key_equal_function_(std::move(other.key_equal_function_)),
                     key_selector_function_(std::move(other.key_selector_function_)),
-                    grow_policy_function_(std::move(other.grow_policy_function_)) {
+                    growth_policy_function_(std::move(other.growth_policy_function_)) {
                 other.clear();
             }
 
             hash_table(hash_table &&other, const allocator_type &allocator) noexcept(
             std::is_nothrow_move_constructible<hasher>::value &&
             std::is_nothrow_move_constructible<key_equal>::value &&
-            std::is_nothrow_move_constructible<grow_policy>::value &&
+            std::is_nothrow_move_constructible<growth_policy>::value &&
             std::is_nothrow_move_constructible<array>::value)
                     :
                     data_(std::move(other.data_), allocator),
@@ -1050,7 +1050,7 @@ namespace ludaed {
                     key_hash_function_(std::move(other.key_hash_function_)),
                     key_equal_function_(std::move(other.key_equal_function_)),
                     key_selector_function_(std::move(other.key_selector_function_)),
-                    grow_policy_function_(std::move(other.grow_policy_function_)) {
+                    growth_policy_function_(std::move(other.growth_policy_function_)) {
                 other.clear();
             }
 
@@ -1064,7 +1064,7 @@ namespace ludaed {
                 key_hash_function_ = other.key_hash_function_;
                 key_equal_function_ = other.key_equal_function_;
                 key_selector_function_ = other.key_selector_function_;
-                grow_policy_function_ = other.grow_policy_function_;
+                growth_policy_function_ = other.growth_policy_function_;
                 return *this;
             }
 
@@ -1078,7 +1078,7 @@ namespace ludaed {
                 key_hash_function_ = std::move(other.key_hash_function_);
                 key_equal_function_ = std::move(other.key_equal_function_);
                 key_selector_function_ = std::move(other.key_selector_function_);
-                grow_policy_function_ = std::move(other.grow_policy_function_);
+                growth_policy_function_ = std::move(other.growth_policy_function_);
                 other.clear();
                 return *this;
             }
@@ -1282,7 +1282,7 @@ namespace ludaed {
                 std::swap(key_selector_function_, other.key_selector_function_);
                 std::swap(key_hash_function_, other.key_hash_function_);
                 std::swap(key_equal_function_, other.key_equal_function_);
-                std::swap(grow_policy_function_, other.grow_policy_function_);
+                std::swap(growth_policy_function_, other.growth_policy_function_);
 
                 std::swap(load_factor_, other.load_factor_);
                 std::swap(size_, other.size_);
@@ -1482,14 +1482,14 @@ namespace ludaed {
         };
     }
 
-    class grow_power_of_two_policy {
+    class power_of_two_growth_policy {
     public:
         size_t operator()(size_t current) const {
             return current * 2;
         }
     };
 
-    class grow_prime_policy {
+    class prime_growth_policy {
     public:
         size_t operator()(size_t current) const {
             for (const auto &item: detail::PRIMES) {
@@ -1505,7 +1505,7 @@ namespace ludaed {
             class KeyHash = std::hash<TKey>,
             class KeyEqual = std::equal_to<TKey>,
             class Allocator = std::allocator<TKey>,
-            class GrowthPolicy = grow_power_of_two_policy>
+            class GrowthPolicy = power_of_two_growth_policy>
     class unordered_set {
 
         class key_selector {
@@ -1838,7 +1838,7 @@ namespace ludaed {
             class KeyHash = std::hash<TKey>,
             class KeyEqual = std::equal_to<TKey>,
             class Allocator = std::allocator<std::pair<const TKey, TValue>>,
-            class GrowthPolicy = grow_power_of_two_policy>
+            class GrowthPolicy = power_of_two_growth_policy>
     class unordered_map {
 
         class key_selector {
@@ -2184,5 +2184,18 @@ namespace ludaed {
             hash_table_.clear();
         }
     };
+
+    template<class TKey,
+            class TValue,
+            class KeyHash = std::hash<TKey>,
+            class KeyEqual = std::equal_to<TKey>,
+            class Allocator = std::allocator<std::pair<const TKey, TValue>>>
+    using unordered_map_prime = unordered_map<TKey, TValue, KeyHash, KeyEqual, Allocator, prime_growth_policy>;
+
+    template<class TKey,
+            class KeyHash = std::hash<TKey>,
+            class KeyEqual = std::equal_to<TKey>,
+            class Allocator = std::allocator<TKey>>
+    using unordered_set_prime = unordered_set<TKey, KeyHash, KeyEqual, Allocator, prime_growth_policy>;
 }
 #endif //HASHMAP_ROBIN_HOOD_H

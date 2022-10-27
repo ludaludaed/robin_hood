@@ -847,8 +847,10 @@ namespace ludaed {
             void _shift_up(size_type index) {
                 size_type distance = 0;
                 node insertion_node(std::move(data_[index]));
+                distance++;
+                index = _next_index(index);
                 while (!insertion_node.empty()) {
-                    if (_distance_to_ideal_bucket(index) < distance) {
+                    if (data_[index].empty() || _distance_to_ideal_bucket(index) < distance) {
                         data_[index].swap(insertion_node);
                         distance = _distance_to_ideal_bucket(index);
                     }
@@ -1881,8 +1883,8 @@ int main() {
     {
 
         ludaed::unordered_map<std::string, int> map;
-        for (int i = 0; i < 25; ++i) {
-            if (i == 18) {
+        for (int i = 0; i < 73; ++i) {
+            if (i == 72) {
                 map.insert({std::to_string(i), i});
             } else {
 //                map[std::to_string(i)] = i;

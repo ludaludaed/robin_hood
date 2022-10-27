@@ -859,11 +859,14 @@ namespace ludaed {
             };
 
             void _shift_down(size_type index) {
-                while (index + 1 < data_.size() &&
-                       !data_[index + 1].empty() &&
-                       _distance_to_ideal_bucket(index + 1) != 0) {
-                    data_[index] = std::move(data_[index + 1]);
-                    index = _next_index(index);
+                size_type prior_index = index;
+                size_type current_index = _next_index(index);
+                
+                while (!data_[current_index].empty() &&
+                       _distance_to_ideal_bucket(current_index) != 0) {
+                    data_[prior_index] = std::move(data_[current_index]);
+                    prior_index = current_index;
+                    current_index = _next_index(current_index);
                 }
             }
 

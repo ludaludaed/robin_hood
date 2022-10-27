@@ -756,8 +756,8 @@ namespace ludaed {
                 class KeySelector,
                 class KeyHash,
                 class KeyEqual,
-                class GrowPolicy,
-                class Allocator>
+                class Allocator,
+                class GrowPolicy>
         class hash_table {
             template<typename TItem>
             class hash_table_iterator;
@@ -1523,7 +1523,7 @@ namespace ludaed {
         };
 
         using hash_table = detail::hash_table<TKey,
-                key_selector, KeyHash, KeyEqual, GrowthPolicy, Allocator>;
+                key_selector, KeyHash, KeyEqual, Allocator, GrowthPolicy>;
 
     public:
         using key_type = typename hash_table::key_type;
@@ -1858,7 +1858,7 @@ namespace ludaed {
 
 
         using hash_table = detail::hash_table<std::pair<const TKey, TValue>,
-                key_selector, KeyHash, KeyEqual, GrowthPolicy, Allocator>;
+                key_selector, KeyHash, KeyEqual, Allocator, GrowthPolicy>;
 
     public:
         using key_type = typename hash_table::key_type;

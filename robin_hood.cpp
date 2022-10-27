@@ -903,9 +903,9 @@ namespace ludaed {
             void _backward_shift(size_type index) {
                 size_type prior_index = index;
                 size_type current_index = _next_index(index);
-
+                data_[prior_index].clear();
                 while (!data_[current_index].empty() &&
-                       _distance_to_ideal_bucket(current_index) != 0) {
+                       _distance_to_ideal_bucket(current_index) > 0) {
                     data_[prior_index] = std::move(data_[current_index]);
                     prior_index = current_index;
                     current_index = _next_index(current_index);
@@ -1871,7 +1871,7 @@ int main() {
     {
 
         ludaed::unordered_map<std::string, int> map;
-        for (int i = 0; i < 10000; ++i) {
+        for (int i = 0; i < 100; ++i) {
             map.insert({std::to_string(i), i});
         }
 
@@ -1887,10 +1887,30 @@ int main() {
                       << res << std::endl;
         }
 
-        for (int i = 0; i < 10000; ++i) {
+        for (int i = 0; i < 100; ++i) {
             if (!map.contains(std::to_string(i))) {
                 std::cout << i << std::endl;
             }
+            map.erase(std::to_string(i));
+        }
+        std::cout << "==================================" << std::endl;
+        for (const auto &item: map) {
+
+            bool res = const_cast<const ludaed::unordered_map<std::string, int> &>(map).find(item.first) ==
+                       const_cast<const ludaed::unordered_map<std::string, int> &>(map).end();
+
+            if (res == 1) {
+                const_cast<const ludaed::unordered_map<std::string, int> &>(map).find(item.first);
+            }
+            std::cout << item.first << " " << item.second << " "
+                      << res << std::endl;
+        }
+
+        for (int i = 0; i < 100; ++i) {
+            if (!map.contains(std::to_string(i))) {
+                std::cout << i << std::endl;
+            }
+            map.erase(std::to_string(i));
         }
     }
     return 0;

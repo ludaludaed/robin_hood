@@ -34,6 +34,63 @@ namespace ludaed {
             }
         };
 
+        static constexpr const size_t PRIMES[] = {
+                1u,
+                5u,
+                17u,
+                29u,
+                37u,
+                53u,
+                67u,
+                79u,
+                97u,
+                131u,
+                193u,
+                257u,
+                389u,
+                521u,
+                769u,
+                1031u,
+                1543u,
+                2053u,
+                3079u,
+                6151u,
+                12289u,
+                24593u,
+                49157u
+#if SIZE_MAX >= ULONG_MAX
+                ,98317ul,
+                196613ul,
+                393241ul,
+                786433ul,
+                1572869ul,
+                3145739ul,
+                6291469ul,
+                12582917ul,
+                25165843ul,
+                50331653ul,
+                100663319ul,
+                201326611ul,
+                402653189ul,
+                805306457ul,
+                1610612741ul,
+                3221225473ul,
+                4294967291ul
+#endif
+#if SIZE_MAX >= ULLONG_MAX
+                ,6442450939ull,
+                12884901893ull,
+                25769803751ull,
+                51539607551ull,
+                103079215111ull,
+                206158430209ull,
+                412316860441ull,
+                824633720831ull,
+                1649267441651ull,
+                3298534883309ull,
+                6597069766657ull,
+#endif
+        };
 
         template<typename TValue, typename Allocator = std::allocator<TValue>>
         class array {
@@ -578,83 +635,6 @@ namespace ludaed {
                     return array_iterator(lhs - rhs.data_);
                 }
             };
-        };
-
-        static constexpr const size_t PRIMES[] = {
-                1u,
-                5u,
-                17u,
-                29u,
-                37u,
-                53u,
-                67u,
-                79u,
-                97u,
-                131u,
-                193u,
-                257u,
-                389u,
-                521u,
-                769u,
-                1031u,
-                1543u,
-                2053u,
-                3079u,
-                6151u,
-                12289u,
-                24593u,
-                49157u
-#if SIZE_MAX >= ULONG_MAX
-                ,98317ul,
-                196613ul,
-                393241ul,
-                786433ul,
-                1572869ul,
-                3145739ul,
-                6291469ul,
-                12582917ul,
-                25165843ul,
-                50331653ul,
-                100663319ul,
-                201326611ul,
-                402653189ul,
-                805306457ul,
-                1610612741ul,
-                3221225473ul,
-                4294967291ul
-#endif
-#if SIZE_MAX >= ULLONG_MAX
-                ,6442450939ull,
-                12884901893ull,
-                25769803751ull,
-                51539607551ull,
-                103079215111ull,
-                206158430209ull,
-                412316860441ull,
-                824633720831ull,
-                1649267441651ull,
-                3298534883309ull,
-                6597069766657ull,
-#endif
-        };
-
-        class grow_power_of_two_policy {
-        public:
-            size_t operator()(size_t current) const {
-                return current * 2;
-            }
-        };
-
-        class grow_prime_policy {
-        public:
-            size_t operator()(size_t current) const {
-                for (const auto &item: PRIMES) {
-                    if (current < item) {
-                        return item;
-                    }
-                }
-                return current;
-            }
         };
 
         template<typename TValue>
@@ -1502,10 +1482,30 @@ namespace ludaed {
         };
     }
 
+    class grow_power_of_two_policy {
+    public:
+        size_t operator()(size_t current) const {
+            return current * 2;
+        }
+    };
+
+    class grow_prime_policy {
+    public:
+        size_t operator()(size_t current) const {
+            for (const auto &item: detail::PRIMES) {
+                if (current < item) {
+                    return item;
+                }
+            }
+            return current;
+        }
+    };
+
     template<class TKey,
             class KeyHash = std::hash<TKey>,
             class KeyEqual = std::equal_to<TKey>,
-            class Allocator = std::allocator<TKey>>
+            class Allocator = std::allocator<TKey>,
+            class GrowthPolicy = grow_power_of_two_policy>
     class unordered_set {
 
         class key_selector {
@@ -1523,7 +1523,7 @@ namespace ludaed {
         };
 
         using hash_table = detail::hash_table<TKey,
-                key_selector, KeyHash, KeyEqual, detail::grow_power_of_two_policy, Allocator>;
+                key_selector, KeyHash, KeyEqual, GrowthPolicy, Allocator>;
 
     public:
         using key_type = typename hash_table::key_type;
@@ -1837,7 +1837,8 @@ namespace ludaed {
             class TValue,
             class KeyHash = std::hash<TKey>,
             class KeyEqual = std::equal_to<TKey>,
-            class Allocator = std::allocator<std::pair<const TKey, TValue>>>
+            class Allocator = std::allocator<std::pair<const TKey, TValue>>,
+            class GrowthPolicy = grow_power_of_two_policy>
     class unordered_map {
 
         class key_selector {
@@ -1857,7 +1858,7 @@ namespace ludaed {
 
 
         using hash_table = detail::hash_table<std::pair<const TKey, TValue>,
-                key_selector, KeyHash, KeyEqual, detail::grow_power_of_two_policy, Allocator>;
+                key_selector, KeyHash, KeyEqual, GrowthPolicy, Allocator>;
 
     public:
         using key_type = typename hash_table::key_type;

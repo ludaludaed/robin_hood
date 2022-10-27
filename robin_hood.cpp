@@ -863,7 +863,7 @@ namespace ludaed {
                        !data_[index + 1].empty() &&
                        _distance_to_ideal_bucket(index + 1) != 0) {
                     data_[index] = std::move(data_[index + 1]);
-                    index = _next_index(index);;
+                    index = _next_index(index);
                 }
             }
 
@@ -890,7 +890,7 @@ namespace ludaed {
                 _rehash(grow_policy_function_(std::max(data_.size(), size_type(1))));
                 return true;
             }
-            
+
             size_type _find_index(const key_type &key, size_t hash) const {
                 size_type index = _hash_to_index(hash);
                 size_type distance = 0;

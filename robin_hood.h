@@ -975,7 +975,7 @@ namespace ludaed {
                     auto first = data_.data();
                     auto last = data_.data() + data_.size();
 
-                    return std::make_pair(iterator(&data_[insertion_spot_data.first], first, last), true);
+                    return std::make_pair(iterator(first + insertion_spot_data.first, first, last), true);
                 }
 
                 if (_try_to_rehash()) {
@@ -989,7 +989,7 @@ namespace ludaed {
                 auto first = data_.data();
                 auto last = data_.data() + data_.size();
 
-                return std::make_pair(iterator(&data_[insertion_spot_data.first], first, last), false);
+                return std::make_pair(iterator(first + insertion_spot_data.first, first, last), false);
             }
 
         public:

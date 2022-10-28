@@ -324,8 +324,8 @@ namespace ludaed {
                         }
                         data_ = new_data;
                         size_ = other.size_;
-                        return *this;
                         other.clear();
+                        return *this;
                     }
                 }
                 return *this;

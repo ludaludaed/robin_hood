@@ -842,7 +842,8 @@ namespace ludaed {
 
                     for (auto &item: data_) {
                         if (!item.empty()) {
-                            rehashing_table._insert(std::move(item));
+                            rehashing_table._insertion_helper(std::move(item));
+                            rehashing_table.size_++;
                         }
                     }
                     rehashing_table.swap(*this);
@@ -882,6 +883,33 @@ namespace ludaed {
                 return _find_index(key, hash);
             }
 
+            std::pair<size_type, bool> _find_position(const key_type &key, size_t hash) {
+                if (data_.empty()) {
+                    return std::make_pair(data_.size(), false);
+                }
+
+                size_type index = _hash_to_index(hash);
+                size_type distance = 0;
+
+                while (true) {
+                    if (data_[index].empty() ||
+                        distance > _distance_to_ideal_bucket(index)) {
+                        return std::make_pair(index, false);
+                    }
+                    if (data_[index].hash() == hash &&
+                        key_equal_function_(key_selector_function_(data_[index].value()), key)) {
+                        return std::make_pair(index, true);
+                    }
+                    index = _next_index(index);;
+                    distance++;
+                }
+            }
+
+            std::pair<size_type, bool> _find_position(const key_type &key) {
+                size_t hash = key_hash_function_(key);
+                return _find_position(key, hash);
+            }
+
             void _backward_shift(size_type index) {
                 size_type prior_index = index;
                 size_type current_index = _next_index(index);
@@ -906,35 +934,23 @@ namespace ludaed {
                 return 0;
             }
 
-            node_pointer _insertion_helper(node &&insertion_node) {
-                node_pointer result = nullptr;
-                size_type distance = 0;
-                size_type index = _hash_to_index(insertion_node.hash());
-
+            void _insertion_helper(node &&insertion_node, size_type index) {
+                size_type ideal_pos = _hash_to_index(insertion_node.hash());
+                size_type distance = index - ideal_pos;
                 while (!data_[index].empty()) {
                     if (_distance_to_ideal_bucket(index) < distance) {
                         distance = _distance_to_ideal_bucket(index);
                         data_[index].swap(insertion_node);
-                        if (result == nullptr) {
-                            result = &data_[index];
-                        }
                     }
                     distance++;
                     index = _next_index(index);
                 }
                 data_[index].swap(insertion_node);
-                if (result == nullptr) {
-                    result = &data_[index];
-                }
-                return result;
             }
 
-            void _insert(node &&insertion_node) {
-                const key_type &key = key_selector_function_(insertion_node.value());
+            void _insertion_helper(node &&insertion_node) {
                 size_type index = _hash_to_index(insertion_node.hash());
-
-                _insertion_helper(std::move(insertion_node));
-                size_++;
+                _insertion_helper(std::move(insertion_node), index);
             }
 
             std::pair<iterator, bool> _insert(const value_type &value) {
@@ -951,30 +967,29 @@ namespace ludaed {
             std::pair<iterator, bool> _insert(const key_type &key, Args &&... args) {
                 size_t hash = key_hash_function_(key);
 
-                size_type index = _hash_to_index(hash);
-                size_type insertion_index = _find_index(key, hash);
+                auto insertion_spot_data = _find_position(key, hash);
 
-                if (insertion_index != data_.size()) {
-                    data_[insertion_index].set_data(hash, std::forward<Args>(args)...);
+                if (insertion_spot_data.second) {
+                    data_[insertion_spot_data.first].set_data(hash, std::forward<Args>(args)...);
 
                     auto first = data_.data();
                     auto last = data_.data() + data_.size();
 
-                    return std::make_pair(iterator(&data_[insertion_index], first, last), true);
+                    return std::make_pair(iterator(&data_[insertion_spot_data.first], first, last), true);
                 }
 
                 if (_try_to_rehash()) {
-                    index = _hash_to_index(hash);
+                    insertion_spot_data = _find_position(key, hash);
                 }
 
                 node insertion_node(hash, std::forward<Args>(args)...);
-                auto item_pointer = _insertion_helper(std::move(insertion_node));
+                _insertion_helper(std::move(insertion_node), insertion_spot_data.first);
                 size_++;
 
                 auto first = data_.data();
                 auto last = data_.data() + data_.size();
 
-                return std::make_pair(iterator(item_pointer, first, last), false);
+                return std::make_pair(iterator(&data_[insertion_spot_data.first], first, last), false);
             }
 
         public:

@@ -913,6 +913,7 @@ namespace ludaed {
             void _insertion_helper(node &&insertion_node, size_type index) {
                 size_type ideal_pos = _hash_to_index(insertion_node.hash());
                 size_type distance = index - ideal_pos;
+                
                 while (!data_[index].empty()) {
                     if (_distance_to_ideal_bucket(index) < distance) {
                         distance = _distance_to_ideal_bucket(index);

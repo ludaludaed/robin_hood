@@ -1152,19 +1152,6 @@ namespace ludaed {
                 return _insert(value_type(std::forward<Args>(args)...)).first();
             }
 
-            template<class K, class... Args>
-            std::pair<iterator, bool> try_emplace(K &&key, Args &&... args) {
-                return _insert(key, std::piecewise_construct,
-                               std::forward_as_tuple(std::forward<K>(key)),
-                               std::forward_as_tuple(std::forward<Args>(args)...));
-            }
-
-            template<class K, class... Args>
-            iterator try_emplace_hint(const_iterator hint, K &&key, Args &&... args) {
-                (void) hint;
-                return try_emplace(std::forward<K>(key), std::forward<Args>(args)...).first;
-            }
-
             iterator erase(iterator position) {
                 if (position == end()) {
                     return end();
@@ -2087,6 +2074,19 @@ namespace ludaed {
             return hash_table_.emplace_hint(hint, std::forward<Args>(args)...);
         }
 
+        template<class K, class... Args>
+        std::pair<iterator, bool> try_emplace(K &&key, Args &&... args) {
+            return hash_table_.emplace(std::piecewise_construct,
+                                       std::forward_as_tuple(std::forward<K>(key)),
+                                       std::forward_as_tuple(std::forward<Args>(args)...));
+        }
+
+        template<class K, class... Args>
+        iterator try_emplace_hint(const_iterator hint, K &&key, Args &&... args) {
+            (void) hint;
+            return try_emplace(std::forward<K>(key), std::forward<Args>(args)...).first;
+        }
+
         iterator erase(iterator position) {
             return hash_table_.erase(position);
         }
@@ -2112,7 +2112,7 @@ namespace ludaed {
             if (iter != hash_table_.end()) {
                 return iter->second;
             }
-            return hash_table_.try_emplace(key).first->second;
+            return try_emplace(key).first->second;
         }
 
         mapped_type &operator[](key_type &&key) {
@@ -2120,7 +2120,7 @@ namespace ludaed {
             if (iter != hash_table_.end()) {
                 return iter->second;
             }
-            return hash_table_.try_emplace(std::move(key)).first->second;
+            return try_emplace(std::move(key)).first->second;
         }
 
         mapped_type &at(const key_type &key) {

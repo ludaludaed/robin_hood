@@ -859,31 +859,7 @@ namespace ludaed {
                 }
             }
 
-            size_type _find_index(const key_type &key, size_t hash) const {
-                size_type index = _hash_to_index(hash);
-                size_type distance = 0;
-
-                while (!data_.empty()) {
-                    if (data_[index].empty() ||
-                        distance > _distance_to_ideal_bucket(index)) {
-                        return data_.size();
-                    }
-                    if (data_[index].hash() == hash &&
-                        key_equal_function_(key_selector_function_(data_[index].value()), key)) {
-                        return index;
-                    }
-                    index = _next_index(index);;
-                    distance++;
-                }
-                return data_.size();
-            }
-
-            size_type _find_index(const key_type &key) const {
-                size_t hash = key_hash_function_(key);
-                return _find_index(key, hash);
-            }
-
-            std::pair<size_type, bool> _find_position(const key_type &key, size_t hash) {
+            std::pair<size_type, bool> _find_spot(const key_type &key, size_t hash) const {
                 if (data_.empty()) {
                     return std::make_pair(data_.size(), false);
                 }
@@ -905,9 +881,9 @@ namespace ludaed {
                 }
             }
 
-            std::pair<size_type, bool> _find_position(const key_type &key) {
+            std::pair<size_type, bool> _find_spot(const key_type &key) const {
                 size_t hash = key_hash_function_(key);
-                return _find_position(key, hash);
+                return _find_spot(key, hash);
             }
 
             void _backward_shift(size_type index) {
@@ -924,10 +900,10 @@ namespace ludaed {
             }
 
             size_type _erase(const key_type &key) {
-                size_type index = _find_index(key);
+                auto spot_info = _find_spot(key);
 
-                if (index != data_.size()) {
-                    _backward_shift(index);
+                if (spot_info.second) {
+                    _backward_shift(spot_info.first);
                     --size_;
                     return 1;
                 }
@@ -967,29 +943,29 @@ namespace ludaed {
             std::pair<iterator, bool> _insert(const key_type &key, Args &&... args) {
                 size_t hash = key_hash_function_(key);
 
-                auto insertion_spot_data = _find_position(key, hash);
+                auto insertion_spot_info = _find_spot(key, hash);
 
-                if (insertion_spot_data.second) {
-                    data_[insertion_spot_data.first].set_data(hash, std::forward<Args>(args)...);
+                if (insertion_spot_info.second) {
+                    data_[insertion_spot_info.first].set_data(hash, std::forward<Args>(args)...);
 
                     auto first = data_.data();
                     auto last = data_.data() + data_.size();
 
-                    return std::make_pair(iterator(first + insertion_spot_data.first, first, last), true);
+                    return std::make_pair(iterator(first + insertion_spot_info.first, first, last), true);
                 }
 
                 if (_try_to_rehash()) {
-                    insertion_spot_data = _find_position(key, hash);
+                    insertion_spot_info = _find_spot(key, hash);
                 }
 
                 node insertion_node(hash, std::forward<Args>(args)...);
-                _insertion_helper(std::move(insertion_node), insertion_spot_data.first);
+                _insertion_helper(std::move(insertion_node), insertion_spot_info.first);
                 size_++;
 
                 auto first = data_.data();
                 auto last = data_.data() + data_.size();
 
-                return std::make_pair(iterator(first + insertion_spot_data.first, first, last), false);
+                return std::make_pair(iterator(first + insertion_spot_info.first, first, last), false);
             }
 
         public:
@@ -1194,11 +1170,12 @@ namespace ludaed {
             }
 
             size_type count(const key_type &key) const {
-                size_type index = _find_index(key);
-                if (index != data_.size()) {
+                auto spot_info = _find_spot(key);
+                if (spot_info.second) {
                     return 1;
+                } else {
+                    return 0;
                 }
-                return 0;
             }
 
             // TODO: One more methods of 'count'
@@ -1208,15 +1185,15 @@ namespace ludaed {
             }
 
             const_iterator find(const key_type &key) const {
-                size_type index = _find_index(key);
+                auto spot_info = _find_spot(key);
 
-                if (index == data_.size()) {
+                if (!spot_info.second) {
                     return end();
                 }
                 auto first = data_.data();
                 auto last = data_.data() + data_.size();
 
-                return const_iterator(&data_[index], first, last);
+                return const_iterator(first + spot_info.first, first, last);
             }
 
             //TODO: Two more methods of find
@@ -2233,12 +2210,12 @@ namespace ludaed {
             class KeyHash = std::hash<TKey>,
             class KeyEqual = std::equal_to<TKey>,
             class Allocator = std::allocator<std::pair<const TKey, TValue>>>
-    using unordered_map_prime = unordered_map<TKey, TValue, KeyHash, KeyEqual, Allocator, prime_growth_policy>;
+    using unordered_prime_map = unordered_map<TKey, TValue, KeyHash, KeyEqual, Allocator, prime_growth_policy>;
 
     template<class TKey,
             class KeyHash = std::hash<TKey>,
             class KeyEqual = std::equal_to<TKey>,
             class Allocator = std::allocator<TKey>>
-    using unordered_set_prime = unordered_set<TKey, KeyHash, KeyEqual, Allocator, prime_growth_policy>;
+    using unordered_prime_set = unordered_set<TKey, KeyHash, KeyEqual, Allocator, prime_growth_policy>;
 }
 #endif //HASHMAP_ROBIN_HOOD_H

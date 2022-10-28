@@ -906,7 +906,8 @@ namespace ludaed {
                 return 0;
             }
 
-            void _insertion_helper(node &&insertion_node) {
+            node_pointer _insertion_helper(node &&insertion_node) {
+                node_pointer result = nullptr;
                 size_type distance = 0;
                 size_type index = _hash_to_index(insertion_node.hash());
 
@@ -914,12 +915,19 @@ namespace ludaed {
                     if (_distance_to_ideal_bucket(index) < distance) {
                         distance = _distance_to_ideal_bucket(index);
                         data_[index].swap(insertion_node);
+                        if (result == nullptr) {
+                            result = &data_[index];
+                        }
                     }
                     distance++;
                     index = _next_index(index);
                 }
                 data_[index].swap(insertion_node);
-            };
+                if (result == nullptr) {
+                    result = &data_[index];
+                }
+                return result;
+            }
 
             void _insert(node &&insertion_node) {
                 const key_type &key = key_selector_function_(insertion_node.value());
@@ -942,26 +950,31 @@ namespace ludaed {
             template<typename ...Args>
             std::pair<iterator, bool> _insert(const key_type &key, Args &&... args) {
                 size_t hash = key_hash_function_(key);
-                bool has_key = true;
 
                 size_type index = _hash_to_index(hash);
                 size_type insertion_index = _find_index(key, hash);
 
-                if (insertion_index == data_.size()) {
-                    if (_try_to_rehash()) {
-                        index = _hash_to_index(hash);
-                    }
-                    has_key = false;
+                if (insertion_index != data_.size()) {
+                    data_[insertion_index].set_data(hash, std::forward<Args>(args)...);
+
+                    auto first = data_.data();
+                    auto last = data_.data() + data_.size();
+
+                    return std::make_pair(iterator(&data_[insertion_index], first, last), true);
+                }
+
+                if (_try_to_rehash()) {
+                    index = _hash_to_index(hash);
                 }
 
                 node insertion_node(hash, std::forward<Args>(args)...);
-                _insertion_helper(std::move(insertion_node));
+                auto item_pointer = _insertion_helper(std::move(insertion_node));
                 size_++;
 
                 auto first = data_.data();
                 auto last = data_.data() + data_.size();
 
-                return std::make_pair(iterator(&data_[index], first, last), has_key);
+                return std::make_pair(iterator(item_pointer, first, last), false);
             }
 
         public:

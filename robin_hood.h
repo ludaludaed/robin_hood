@@ -1304,7 +1304,7 @@ namespace ludaed {
                 return size_;
             }
 
-            iterator mutable_iterator(const_iterator position) const {
+            iterator mutable_iterator(const_iterator position) {
                 auto first = data_.data();
                 auto last = data_.data() + data_.size();
                 return iterator(const_cast<node_pointer>(position.data_), first, last);
@@ -2095,10 +2095,18 @@ namespace ludaed {
         }
 
         mapped_type &operator[](const key_type &key) {
+            auto iter = hash_table_.find(key);
+            if (iter != hash_table_.end()) {
+                return iter->second;
+            }
             return hash_table_.try_emplace(key).first->second;
         }
 
         mapped_type &operator[](key_type &&key) {
+            auto iter = hash_table_.find(key);
+            if (iter != hash_table_.end()) {
+                return iter->second;
+            }
             return hash_table_.try_emplace(std::move(key)).first->second;
         }
 

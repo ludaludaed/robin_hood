@@ -700,7 +700,7 @@ namespace ludaed {
                 return *this;
             }
 
-            node &operator=(node &&other) {
+            node &operator=(node &&other) noexcept(std::is_nothrow_move_constructible<value_type>::value) {
                 clear();
                 if (!other.empty()) {
                     value_.construct(std::move(*other.value_));

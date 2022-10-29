@@ -264,7 +264,7 @@ namespace ludaed {
                     return *this;
                 }
                 _deallocate_and_destroy_data(allocator_, data_, size_);
-                if constexpr(allocator_traits::propagate_on_container_copy_assignment::value) {
+                if constexpr (allocator_traits::propagate_on_container_copy_assignment::value) {
                     if (allocator_ != other.allocator_) {
                         allocator_ = other.allocator_;
                     }
@@ -335,7 +335,7 @@ namespace ludaed {
                 if (this == &other) {
                     return;
                 }
-                if constexpr(allocator_traits::propagate_on_container_swap::value) {
+                if constexpr (allocator_traits::propagate_on_container_swap::value) {
                     std::swap(allocator_, other.allocator_);
                     std::swap(data_, other.data_);
                     std::swap(size_, other.size_);
@@ -454,22 +454,22 @@ namespace ludaed {
                 allocator_traits::construct(allocator_, it.data_, std::forward<Args>(args)...);
             }
 
-            TValue &operator[](size_type index) {
+            reference operator[](size_type index) {
                 assert(index < size_);
                 return data_[index];
             }
 
-            const TValue &operator[](size_type index) const {
+            const_reference operator[](size_type index) const {
                 assert(index < size_);
                 return data_[index];
             }
 
-            TValue &at(size_type index) {
+            reference at(size_type index) {
                 assert(index < size_);
                 return data_[index];
             }
 
-            const TValue &at(size_type index) const {
+            const_reference at(size_type index) const {
                 assert(index < size_);
                 return data_[index];
             }

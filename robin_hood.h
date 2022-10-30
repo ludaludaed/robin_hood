@@ -5,7 +5,7 @@
 #include <cassert>
 #include <cstdint>
 
-namespace ludaed {
+namespace ld {
 
     namespace detail {
 

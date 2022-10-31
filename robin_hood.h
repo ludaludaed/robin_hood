@@ -876,7 +876,7 @@ namespace ld {
                         key_equal_function_(key_selector_function_(data_[index].value()), key)) {
                         return std::make_pair(index, true);
                     }
-                    index = _next_index(index);;
+                    index = _next_index(index);
                     distance++;
                 }
             }

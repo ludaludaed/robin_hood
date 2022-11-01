@@ -146,10 +146,6 @@ namespace ld {
             }
 
         public:
-            allocator_type get_allocator() const {
-                return allocator_;
-            }
-
             array()
                     :
                     data_(nullptr),
@@ -472,6 +468,10 @@ namespace ld {
             const_reference at(size_type index) const {
                 assert(index < size_);
                 return data_[index];
+            }
+
+            allocator_type get_allocator() const {
+                return allocator_;
             }
 
             bool empty() const noexcept {

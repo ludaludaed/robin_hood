@@ -936,7 +936,7 @@ namespace ld {
             }
 
             std::pair<iterator, bool> _insert(value_type &&value) {
-                const key_type &key = key_selector_function_(std::move(value));
+                const key_type &key = key_selector_function_(value);
                 return _insert(key, std::move(value));
             }
 

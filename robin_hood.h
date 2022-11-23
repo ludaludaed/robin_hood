@@ -760,6 +760,7 @@ namespace ld {
 
         public:
             using value_type = typename Traits::value_type;
+            using mutable_value_type = typename Traits::mutable_value_type;
             using difference_type = std::ptrdiff_t;
             using reference = typename Traits::value_type &;
             using const_reference = const typename Traits::value_type &;
@@ -917,17 +918,17 @@ namespace ld {
 
             std::pair<iterator, bool> _insert(value_type &&value) {
                 const key_type &key = traits_.select_key(value);
-                return _insert(key, std::move(value));
+                return _insert(key, reinterpret_cast<mutable_value_type &&>(std::move(value)));
             }
 
-            template<typename ...Args>
-            std::pair<iterator, bool> _insert(const key_type &key, Args &&... args) {
-                size_t hash = traits_(key);
+            template<typename PKey, typename PValue>
+            std::pair<iterator, bool> _insert(PKey &&key, PValue &&value) {
+                size_t hash = traits_(std::forward<PKey>(key));
 
-                auto insertion_spot_info = _find_spot(key, hash);
+                auto insertion_spot_info = _find_spot(std::forward<PKey>(key), hash);
 
                 if (insertion_spot_info.second) {
-                    data_[insertion_spot_info.first].set_data(hash, std::forward<Args>(args)...);
+                    data_[insertion_spot_info.first].set_data(hash, std::forward<PValue>(value));
 
                     auto first = data_.data();
                     auto last = data_.data() + data_.size();
@@ -936,10 +937,10 @@ namespace ld {
                 }
 
                 if (_try_to_rehash()) {
-                    insertion_spot_info = _find_spot(key, hash);
+                    insertion_spot_info = _find_spot(std::forward<PKey>(key), hash);
                 }
 
-                node insertion_node(hash, std::forward<Args>(args)...);
+                node insertion_node(hash, std::forward<PValue>(value));
                 _insertion_helper(std::move(insertion_node), insertion_spot_info.first);
                 size_++;
 
@@ -1076,9 +1077,7 @@ namespace ld {
             }
 
             void insert(std::initializer_list<value_type> list) {
-                for (auto it = list.begin(); it != list.end(); ++it) {
-                    _insert(std::move(*it));
-                }
+                insert(list.begin(), list.end());
             }
 
             template<typename ...Args>

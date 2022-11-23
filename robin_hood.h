@@ -1077,9 +1077,7 @@ namespace ld {
             }
 
             void insert(std::initializer_list<value_type> list) {
-                for(auto it = list.begin(); it != list.end(); ++it) {
-                    _insert(std::move(*it));
-                }
+                insert(list.begin(), list.end());
             }
 
             template<typename ...Args>

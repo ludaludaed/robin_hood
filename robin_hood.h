@@ -714,17 +714,17 @@ namespace ld {
             }
 
             void swap(node &other) {
-                node temp = *this;
-                *this = other;
-                other = temp;
-            }
-
-            bool empty() const {
-                return empty_ == kEmptyMarker;
-            }
-
-            hash_type hash() const {
-                return hash_;
+                if (!other.empty() && !empty()) {
+                    value_type temp_value = std::move(other.value());
+                    other.value_.construct(std::move(value()));
+                    value_.construct(std::move(temp_value));
+                } else if (!other.empty()) {
+                    value_.construct(std::move(other.value()));
+                } else if (!empty()) {
+                    other.value_.construct(std::move(value()));
+                }
+                std::swap(empty_, other.empty_);
+                std::swap(hash_, other.hash_);
             }
 
             const value_type &value() const {
@@ -733,6 +733,14 @@ namespace ld {
 
             value_type &value() {
                 return *value_;
+            }
+
+            bool empty() const {
+                return empty_ == kEmptyMarker;
+            }
+
+            hash_type hash() const {
+                return hash_;
             }
         };
 
@@ -743,7 +751,7 @@ namespace ld {
 
             using traits_type = Traits;
             using key_compare = typename Traits::key_compare;
-            using node = node<typename Traits::value_type>;
+            using node = node<typename Traits::mutable_value_type>;
             using node_allocator = typename std::allocator_traits<typename Traits::allocator_type>::template rebind_alloc<node>;
             using array = array<node, node_allocator>;
             using node_pointer = typename array::pointer;
@@ -1359,11 +1367,11 @@ namespace ld {
 
             public:
                 reference operator*() const {
-                    return data_->value();
+                    return reinterpret_cast<reference>(data_->value());
                 }
 
                 pointer operator->() const {
-                    return &data_->value();
+                    return reinterpret_cast<pointer>(&data_->value());
                 }
 
                 bool operator==(const hash_table_iterator &other) const {

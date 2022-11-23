@@ -928,11 +928,8 @@ namespace ld {
                 auto insertion_spot_info = _find_spot(std::forward<PKey>(key), hash);
 
                 if (insertion_spot_info.second) {
-                    data_[insertion_spot_info.first].set_data(hash, std::forward<PValue>(value));
-
                     auto first = data_.data();
                     auto last = data_.data() + data_.size();
-
                     return std::make_pair(iterator(first + insertion_spot_info.first, first, last), true);
                 }
 
@@ -1887,18 +1884,10 @@ namespace ld {
         }
 
         mapped_type &operator[](const key_type &key) {
-            auto iter = hash_table_.find(key);
-            if (iter != hash_table_.end()) {
-                return iter->second;
-            }
             return try_emplace(key).first->second;
         }
 
         mapped_type &operator[](key_type &&key) {
-            auto iter = hash_table_.find(key);
-            if (iter != hash_table_.end()) {
-                return iter->second;
-            }
             return try_emplace(std::move(key)).first->second;
         }
 

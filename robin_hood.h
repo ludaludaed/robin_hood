@@ -147,44 +147,38 @@ namespace ld {
 
         public:
             array()
-                    :
-                    data_(nullptr),
-                    size_(0) {};
+                    : data_(nullptr),
+                      size_(0) {};
 
             explicit array(size_type size)
-                    :
-                    data_(nullptr),
-                    size_(size) {
+                    : data_(nullptr),
+                      size_(size) {
                 data_ = _allocate_and_construct_data(allocator_, size_);
             }
 
             explicit array(const allocator_type &allocator)
-                    :
-                    data_(nullptr),
-                    size_(0),
-                    allocator_(allocator) {
+                    : data_(nullptr),
+                      size_(0),
+                      allocator_(allocator) {
             }
 
             array(size_type size, const allocator_type &allocator)
-                    :
-                    data_(nullptr),
-                    size_(size),
-                    allocator_(allocator) {
+                    : data_(nullptr),
+                      size_(size),
+                      allocator_(allocator) {
                 data_ = _allocate_and_construct_data(allocator_, size_);
             }
 
             array(size_type size, const_reference default_value)
-                    :
-                    data_(nullptr),
-                    size_(size) {
+                    : data_(nullptr),
+                      size_(size) {
                 data_ = _allocate_and_construct_data(allocator_, size_, default_value);
             }
 
             array(const array &other)
-                    :
-                    data_(nullptr),
-                    size_(other.size_),
-                    allocator_(allocator_traits::select_on_container_copy_construction(other.allocator_)) {
+                    : data_(nullptr),
+                      size_(other.size_),
+                      allocator_(allocator_traits::select_on_container_copy_construction(other.allocator_)) {
                 data_ = allocator_traits::allocate(allocator_, size_);
                 for (size_type i = 0; i < size_; ++i) {
                     try {
@@ -200,10 +194,9 @@ namespace ld {
             }
 
             array(const array &other, const allocator_type &allocator)
-                    :
-                    data_(nullptr),
-                    size_(other.size_),
-                    allocator_(allocator) {
+                    : data_(nullptr),
+                      size_(other.size_),
+                      allocator_(allocator) {
                 data_ = allocator_traits::allocate(allocator_, size_);
                 for (size_type i = 0; i < size_; ++i) {
                     try {
@@ -219,20 +212,18 @@ namespace ld {
             }
 
             array(array &&other) noexcept
-                    :
-                    size_(other.size_),
-                    data_(other.data_),
-                    allocator_(std::move(other.allocator_)) {
+                    : size_(other.size_),
+                      data_(other.data_),
+                      allocator_(std::move(other.allocator_)) {
                 other.data_ = nullptr;
                 other.size_ = 0;
             }
 
             array(array &&other, const allocator_type &allocator)
             noexcept(std::is_nothrow_move_constructible<TValue>::value)
-                    :
-                    size_(0),
-                    data_(nullptr),
-                    allocator_(allocator) {
+                    : size_(0),
+                      data_(nullptr),
+                      allocator_(allocator) {
                 size_type new_size = other.size_;
                 pointer new_data = allocator_traits::allocate(allocator_, new_size);
                 for (size_type i = 0; i < new_size; ++i) {
@@ -522,17 +513,14 @@ namespace ld {
                 pointer data_;
 
                 explicit array_iterator(pointer data)
-                        :
-                        data_(data) {}
+                        : data_(data) {}
 
             public:
                 array_iterator()
-                        :
-                        data_(nullptr) {}
+                        : data_(nullptr) {}
 
                 array_iterator(const array_iterator &other)
-                        :
-                        data_(other.data_) {}
+                        : data_(other.data_) {}
 
 
                 array_iterator &operator=(const array_iterator &other) {
@@ -655,31 +643,27 @@ namespace ld {
 
         public:
             node()
-                    :
-                    empty_(kEmptyMarker),
-                    hash_(kDefaultHash) {}
+                    : empty_(kEmptyMarker),
+                      hash_(kDefaultHash) {}
 
             template<typename ...Args>
             explicit node(hash_type hash, Args &&...args)
-                    :
-                    hash_(hash),
-                    empty_(kNoEmptyMarker) {
+                    : hash_(hash),
+                      empty_(kNoEmptyMarker) {
                 value_.construct(std::forward<Args>(args)...);
             }
 
             node(const node &other) noexcept(std::is_nothrow_copy_constructible_v<value_type>)
-                    :
-                    empty_(other.empty_),
-                    hash_(other.hash_) {
+                    : empty_(other.empty_),
+                      hash_(other.hash_) {
                 if (!other.empty()) {
                     value_.construct(*other.value_);
                 }
             }
 
             node(node &&other) noexcept(std::is_nothrow_move_constructible_v<value_type>)
-                    :
-                    empty_(other.empty_),
-                    hash_(other.hash_) {
+                    : empty_(other.empty_),
+                      hash_(other.hash_) {
                 if (!other.empty()) {
                     value_.construct(std::move(*other.value_));
                 }
@@ -752,50 +736,41 @@ namespace ld {
             }
         };
 
-        template<class TValue,
-                class KeySelector,
-                class KeyHash,
-                class KeyEqual,
-                class Allocator,
-                class GrowthPolicy>
+        template<typename Traits>
         class hash_table {
             template<typename TItem>
             class hash_table_iterator;
 
-            using node = node<TValue>;
-            using node_allocator = typename std::allocator_traits<Allocator>::template rebind_alloc<node>;
+            using traits_type = Traits;
+            using key_compare = typename Traits::key_compare;
+            using node = node<typename Traits::value_type>;
+            using node_allocator = typename std::allocator_traits<typename Traits::allocator_type>::template rebind_alloc<node>;
             using array = array<node, node_allocator>;
             using node_pointer = typename array::pointer;
 
             static constexpr const float kDefaultLoadFactor = 0.5f;
 
         public:
-            using value_type = TValue;
+            using value_type = typename Traits::value_type;
             using difference_type = std::ptrdiff_t;
-            using reference = TValue &;
-            using const_reference = const TValue &;
-            using pointer = TValue *;
-            using const_pointer = const TValue *;
+            using reference = typename Traits::value_type &;
+            using const_reference = const typename Traits::value_type &;
+            using pointer = typename Traits::value_type *;
+            using const_pointer = const typename Traits::value_type *;
 
-            using key_type = typename KeySelector::key_type;
-            using key_equal = KeyEqual;
-            using hasher = KeyHash;
+            using key_type = typename key_compare::key_type;
+            using key_equal = typename key_compare::key_equal;
+            using hasher = typename key_compare::hasher;
 
-            using key_selector = KeySelector;
-            using growth_policy = GrowthPolicy;
+            using iterator = hash_table_iterator<value_type>;
+            using const_iterator = hash_table_iterator<const value_type>;
 
-            using iterator = hash_table_iterator<TValue>;
-            using const_iterator = hash_table_iterator<const TValue>;
-
-            using allocator_type = Allocator;
+            using allocator_type = typename Traits::allocator_type;
 
             using size_type = typename array::size_type;
 
         private:
-            key_selector key_selector_function_{};
-            hasher key_hash_function_{};
-            key_equal key_equal_function_{};
-            growth_policy growth_policy_function_{};
+            traits_type traits_;
 
             float load_factor_{kDefaultLoadFactor};
             size_type size_{0};
@@ -824,7 +799,7 @@ namespace ld {
                 size_type current_capacity = data_.size();
 
                 while (needed_capacity >= current_capacity) {
-                    current_capacity = growth_policy_function_(current_capacity);
+                    current_capacity = traits_.next_capacity(current_capacity);
                 }
                 return current_capacity;
             }
@@ -835,10 +810,7 @@ namespace ld {
 
             void _rehash(size_type new_capacity) {
                 if (new_capacity > data_.size()) {
-                    hash_table rehashing_table(new_capacity,
-                                               key_hash_function_,
-                                               key_equal_function_,
-                                               data_.get_allocator());
+                    hash_table rehashing_table(new_capacity, traits_, data_.get_allocator());
 
                     for (auto &item: data_) {
                         if (!item.empty()) {
@@ -854,7 +826,7 @@ namespace ld {
                 if (size_ < _size_to_rehash()) {
                     return false;
                 } else {
-                    _rehash(growth_policy_function_(std::max(data_.size(), size_type(1))));
+                    _rehash(traits_.next_capacity(std::max(data_.size(), size_type(1))));
                     return true;
                 }
             }
@@ -873,7 +845,7 @@ namespace ld {
                         return std::make_pair(index, false);
                     }
                     if (data_[index].hash() == hash &&
-                        key_equal_function_(key_selector_function_(data_[index].value()), key)) {
+                        traits_(traits_.select_key(data_[index].value()), key)) {
                         return std::make_pair(index, true);
                     }
                     index = _next_index(index);
@@ -882,7 +854,7 @@ namespace ld {
             }
 
             std::pair<size_type, bool> _find_spot(const key_type &key) const {
-                size_t hash = key_hash_function_(key);
+                size_t hash = traits_(key);
                 return _find_spot(key, hash);
             }
 
@@ -931,18 +903,18 @@ namespace ld {
             }
 
             std::pair<iterator, bool> _insert(const value_type &value) {
-                const key_type &key = key_selector_function_(value);
+                const key_type &key = traits_.select_key(value);
                 return _insert(key, value);
             }
 
             std::pair<iterator, bool> _insert(value_type &&value) {
-                const key_type &key = key_selector_function_(value);
+                const key_type &key = traits_.select_key(value);
                 return _insert(key, std::move(value));
             }
 
             template<typename ...Args>
             std::pair<iterator, bool> _insert(const key_type &key, Args &&... args) {
-                size_t hash = key_hash_function_(key);
+                size_t hash = traits_(key);
 
                 auto insertion_spot_info = _find_spot(key, hash);
 
@@ -976,13 +948,15 @@ namespace ld {
                                 const hasher &key_hash_function = hasher{},
                                 const key_equal &key_equal_function = key_equal{},
                                 const allocator_type &allocator = allocator_type{})
-                    :
-                    data_(capacity, allocator),
-                    key_hash_function_(key_hash_function),
-                    key_equal_function_(key_equal_function),
-                    key_selector_function_(),
-                    growth_policy_function_() {
+                    : data_(capacity, allocator),
+                      traits_(key_compare(key_hash_function, key_equal_function)) {
             }
+
+            explicit hash_table(size_type capacity,
+                                const traits_type &traits,
+                                const allocator_type &allocator = allocator_type{})
+                    : data_(capacity, allocator),
+                      traits_(traits) {}
 
             template<typename InputIt>
             hash_table(InputIt begin, InputIt end,
@@ -990,12 +964,8 @@ namespace ld {
                        const hasher &key_hash_function = hasher{},
                        const key_equal &key_equal_function = key_equal{},
                        const allocator_type &allocator = allocator_type{})
-                    :
-                    data_(capacity, allocator),
-                    key_hash_function_(key_hash_function),
-                    key_equal_function_(key_equal_function),
-                    key_selector_function_(),
-                    growth_policy_function_() {
+                    : data_(capacity, allocator),
+                      traits_(key_compare(key_hash_function, key_equal_function)) {
                 insert(begin, end);
             }
 
@@ -1004,60 +974,38 @@ namespace ld {
                        const hasher &key_hash_function = hasher{},
                        const key_equal &key_equal_function = key_equal{},
                        const allocator_type &allocator = allocator_type{})
-                    :
-                    data_(capacity, allocator),
-                    key_hash_function_(key_hash_function),
-                    key_equal_function_(key_equal_function),
-                    key_selector_function_(),
-                    growth_policy_function_() {
+                    : data_(capacity, allocator),
+                      traits_(key_compare(key_hash_function, key_equal_function)) {
                 insert(list.begin(), list.end());
             }
 
             hash_table(const hash_table &other)
-                    :
-                    data_(other.data_),
-                    size_(other.size_),
-                    load_factor_(other.load_factor_),
-                    key_hash_function_(other.key_hash_function_),
-                    key_equal_function_(other.key_equal_function_),
-                    key_selector_function_(other.key_selector_function_),
-                    growth_policy_function_(other.growth_policy_function_) {}
+                    : data_(other.data_),
+                      size_(other.size_),
+                      load_factor_(other.load_factor_),
+                      traits_(other.traits_) {}
 
             hash_table(const hash_table &other, const allocator_type &allocator)
-                    :
-                    data_(other.data_, allocator),
-                    size_(other.size_),
-                    load_factor_(other.load_factor_),
-                    key_hash_function_(other.key_hash_function_),
-                    key_equal_function_(other.key_equal_function_),
-                    key_selector_function_(other.key_selector_function_),
-                    growth_policy_function_(other.growth_policy_function_) {}
+                    : data_(other.data_, allocator),
+                      size_(other.size_),
+                      load_factor_(other.load_factor_),
+                      traits_(other.traits_) {}
 
             hash_table(hash_table &&other) noexcept(
-            std::is_nothrow_move_constructible<hasher>::value &&
-            std::is_nothrow_move_constructible<key_equal>::value &&
-            std::is_nothrow_move_constructible<growth_policy>::value &&
+            std::is_nothrow_move_constructible<traits_type>::value &&
             std::is_nothrow_move_constructible<array>::value)
-                    :
-                    data_(std::move(other.data_)),
-                    size_(other.size_),
-                    load_factor_(other.load_factor_),
-                    key_hash_function_(std::move(other.key_hash_function_)),
-                    key_equal_function_(std::move(other.key_equal_function_)),
-                    key_selector_function_(std::move(other.key_selector_function_)),
-                    growth_policy_function_(std::move(other.growth_policy_function_)) {
+                    : data_(std::move(other.data_)),
+                      size_(other.size_),
+                      load_factor_(other.load_factor_),
+                      traits_((std::move(other.traits_))) {
                 other.clear();
             }
 
             hash_table(hash_table &&other, const allocator_type &allocator)
-                    :
-                    data_(std::move(other.data_), allocator),
-                    size_(other.size_),
-                    load_factor_(other.load_factor_),
-                    key_hash_function_(std::move(other.key_hash_function_)),
-                    key_equal_function_(std::move(other.key_equal_function_)),
-                    key_selector_function_(std::move(other.key_selector_function_)),
-                    growth_policy_function_(std::move(other.growth_policy_function_)) {
+                    : data_(std::move(other.data_), allocator),
+                      size_(other.size_),
+                      load_factor_(other.load_factor_),
+                      traits_((std::move(other.traits_))) {
                 other.clear();
             }
 
@@ -1068,11 +1016,7 @@ namespace ld {
                 data_ = other.data_;
                 size_ = other.size_;
                 load_factor_ = other.load_factor_;
-
-                key_hash_function_ = other.key_hash_function_;
-                key_equal_function_ = other.key_equal_function_;
-                key_selector_function_ = other.key_selector_function_;
-                growth_policy_function_ = other.growth_policy_function_;
+                traits_ = other.traits_;
                 return *this;
             }
 
@@ -1083,11 +1027,7 @@ namespace ld {
                 data_ = std::move(other.data_);
                 size_ = other.size_;
                 load_factor_ = other.load_factor_;
-
-                key_hash_function_ = std::move(other.key_hash_function_);
-                key_equal_function_ = std::move(other.key_equal_function_);
-                key_selector_function_ = std::move(other.key_selector_function_);
-                growth_policy_function_ = std::move(other.growth_policy_function_);
+                traits_ = std::move(other.traits_);
                 other.clear();
                 return *this;
             }
@@ -1148,7 +1088,7 @@ namespace ld {
                 if (position == end()) {
                     return end();
                 }
-                _erase(key_selector_function_(*position));
+                _erase(traits_.select_key(*position));
                 if (position.data_->empty()) {
                     ++position;
                 }
@@ -1250,11 +1190,11 @@ namespace ld {
             }
 
             hasher hash_function() const {
-                return key_hash_function_;
+                return traits_.hash_function();
             }
 
             key_equal key_eq() const {
-                return key_equal_function_;
+                return traits_.key_eq();
             }
 
             bool operator==(const hash_table &other) const {
@@ -1262,7 +1202,7 @@ namespace ld {
                     return false;
                 }
                 for (auto it = other.begin(); it != other.end(); ++it) {
-                    if (!contains(other.key_selector_function_(*it))) {
+                    if (!contains(other.traits_.select_key(*it))) {
                         return false;
                     }
                 }
@@ -1279,11 +1219,7 @@ namespace ld {
             }
 
             void swap(hash_table &other) {
-                std::swap(key_selector_function_, other.key_selector_function_);
-                std::swap(key_hash_function_, other.key_hash_function_);
-                std::swap(key_equal_function_, other.key_equal_function_);
-                std::swap(growth_policy_function_, other.growth_policy_function_);
-
+                std::swap(traits_, other.traits_);
                 std::swap(load_factor_, other.load_factor_);
                 std::swap(size_, other.size_);
                 std::swap(data_, other.data_);
@@ -1484,14 +1420,18 @@ namespace ld {
 
     class power_of_two_growth_policy {
     public:
-        size_t operator()(size_t current) const {
+        using size_type = size_t;
+    public:
+        size_type operator()(size_type current) const {
             return current * 2;
         }
     };
 
     class prime_growth_policy {
     public:
-        size_t operator()(size_t current) const {
+        using size_type = size_t;
+    public:
+        size_type operator()(size_type current) const {
             for (const auto &item: detail::PRIMES) {
                 if (current < item) {
                     return item;
@@ -1502,334 +1442,189 @@ namespace ld {
     };
 
     template<class TKey,
-            class KeyHash = std::hash<TKey>,
-            class KeyEqual = std::equal_to<TKey>,
-            class Allocator = std::allocator<TKey>,
-            class GrowthPolicy = power_of_two_growth_policy>
-    class unordered_set {
-
-        class key_selector {
-        public:
-            using key_type = TKey;
-
-        public:
-            key_type operator()(key_type &&p) const noexcept {
-                return std::move(p.first);
-            }
-
-            const key_type &operator()(const key_type &p) const noexcept {
-                return p.first;
-            }
-        };
-
-        using hash_table = detail::hash_table<TKey,
-                key_selector, KeyHash, KeyEqual, Allocator, GrowthPolicy>;
-
+            class KeyHash,
+            class KeyEqual>
+    class key_compare_traits {
     public:
-        using key_type = typename hash_table::key_type;
-        using value_type = typename hash_table::value_type;
-
-        using size_type = typename hash_table::size_type;
-        using difference_type = typename hash_table::difference_type;
-
-        using hasher = typename hash_table::hasher;
-        using key_equal = typename hash_table::key_equal;
-        using allocator_type = typename hash_table::allocator_type;
-
-        using reference = typename hash_table::reference;
-        using const_reference = typename hash_table::const_reference;
-
-        using pointer = typename hash_table::pointer;
-        using const_pointer = typename hash_table::const_pointer;
-
-        using iterator = typename hash_table::iterator;
-        using const_iterator = typename hash_table::const_iterator;
+        using key_type = TKey;
+        using hasher = KeyHash;
+        using key_equal = KeyEqual;
 
     private:
-        hash_table hash_table_;
+        hasher key_hash_;
+        key_equal key_equal_;
 
     public:
-        unordered_set()
-                :
-                hash_table_() {}
+        key_compare_traits() = default;
 
-        explicit unordered_set(size_type capacity,
-                               const hasher &key_hash_function = hasher{},
-                               const key_equal &key_equal_function = key_equal{},
-                               const allocator_type &allocator = allocator_type{})
-                : hash_table_(capacity, key_hash_function, key_equal_function, allocator) {}
+        explicit key_compare_traits(const hasher &key_hash)
+                : key_hash_(key_hash), key_equal_() {}
 
-        unordered_set(size_type capacity, const allocator_type &allocator)
-                : hash_table_(capacity, hasher{}, key_equal{}, allocator) {}
+        explicit key_compare_traits(const key_equal &key_equal)
+                : key_hash_(), key_equal_(key_equal) {}
 
-        unordered_set(size_type capacity, const hasher &key_hash_function, const allocator_type &allocator)
-                : hash_table_(capacity, key_hash_function, key_equal{}, allocator) {}
+        key_compare_traits(const hasher &key_hash, const key_equal &key_equal)
+                : key_hash_(key_hash), key_equal_(key_equal) {}
 
-        explicit unordered_set(const allocator_type &allocator)
-                : hash_table_(0, hasher{}, key_equal{}, allocator) {}
+        key_compare_traits(const key_compare_traits &other) = default;
 
-        template<typename InputIt>
-        unordered_set(InputIt begin, InputIt end,
-                      size_type capacity = 0,
-                      const hasher &key_hash_function = hasher{},
-                      const key_equal &key_equal_function = key_equal{},
-                      const allocator_type &allocator = allocator_type{})
-                : hash_table_(begin, end, capacity, key_hash_function, key_equal_function, allocator) {}
+        key_compare_traits(key_compare_traits &&other) noexcept = default;
 
-        template<typename InputIt>
-        unordered_set(InputIt begin, InputIt end,
-                      size_type capacity = 0,
-                      const allocator_type &allocator = allocator_type{})
-                : hash_table_(begin, end, capacity, hasher{}, key_equal{}, allocator) {}
+        key_compare_traits &operator=(const key_compare_traits &other) = default;
 
-        template<typename InputIt>
-        unordered_set(InputIt begin, InputIt end,
-                      size_type capacity = 0,
-                      const hasher &key_hash_function = hasher{},
-                      const allocator_type &allocator = allocator_type{})
-                : hash_table_(begin, end, capacity, key_hash_function, key_equal{}, allocator) {}
+        key_compare_traits &operator=(key_compare_traits &&other) noexcept = default;
 
-        unordered_set(std::initializer_list<value_type> list,
-                      size_type capacity = 0,
-                      const hasher &key_hash_function = hasher{},
-                      const key_equal &key_equal_function = key_equal{},
-                      const allocator_type &allocator = allocator_type{})
-                : hash_table_(list.begin(), list.end(), capacity, key_hash_function, key_equal_function, allocator) {}
+        virtual ~key_compare_traits() = default;
 
-        unordered_set(std::initializer_list<value_type> list,
-                      size_type capacity = 0,
-                      const allocator_type &allocator = allocator_type{})
-                : hash_table_(list.begin(), list.end(), capacity, hasher{}, key_equal{}, allocator) {}
-
-        unordered_set(std::initializer_list<value_type> list,
-                      size_type capacity = 0,
-                      const hasher &key_hash_function = hasher{},
-                      const allocator_type &allocator = allocator_type{})
-                : hash_table_(list.begin(), list.end(), capacity, key_hash_function, key_equal{}, allocator) {}
-
-        unordered_set(const unordered_set &other) noexcept(std::is_nothrow_copy_constructible<hash_table>::value)
-                : hash_table_(other.hash_table_) {}
-
-        unordered_set(const unordered_set &other, const allocator_type &allocator)
-                : hash_table_(other.hash_table_, allocator) {}
-
-        unordered_set(unordered_set &&other) noexcept(std::is_nothrow_move_constructible<hash_table>::value)
-                : hash_table_(std::move(other.hash_table_)) {}
-
-        unordered_set(unordered_set &&other, const allocator_type &allocator)
-                : hash_table_(std::move(other.hash_table_), allocator) {}
-
-        unordered_set &operator=(const unordered_set &other) {
-            hash_table_ = other.hash_table_;
-            return *this;
+        size_t operator()(const key_type &key) const {
+            return key_hash_(key);
         }
 
-        unordered_set &operator=(unordered_set &&other) noexcept(std::is_nothrow_move_assignable<hash_table>::value) {
-            hash_table_ = std::move(other.hash_table_);
-            return *this;
-        }
-
-        unordered_set &operator=(std::initializer_list<value_type> list) {
-            hash_table_ = list;
-            return *this;
-        }
-
-        allocator_type get_allocator() const {
-            return hash_table_.get_allocator();
-        }
-
-        iterator begin() noexcept {
-            return hash_table_.begin();
-        }
-
-        iterator end() noexcept {
-            return hash_table_.end();
-        }
-
-        const_iterator begin() const noexcept {
-            return hash_table_.begin();
-        }
-
-        const_iterator end() const noexcept {
-            return hash_table_.end();
-        }
-
-        const_iterator cbegin() const noexcept {
-            return hash_table_.cbegin();
-        }
-
-        const_iterator cend() const noexcept {
-            return hash_table_.cend();
-        }
-
-        iterator rbegin() noexcept {
-            return hash_table_.rbegin();
-        }
-
-        iterator rend() noexcept {
-            return hash_table_.rend();
-        }
-
-        const_iterator rbegin() const noexcept {
-            return hash_table_.rbegin();
-        }
-
-        const_iterator rend() const noexcept {
-            return hash_table_.rend();
-        }
-
-        bool empty() const noexcept {
-            return hash_table_.empty();
-        }
-
-        size_type size() const noexcept {
-            return hash_table_.size();
-        }
-
-        std::pair<iterator, bool> insert(const value_type &value) {
-            return hash_table_.insert(value);
-        }
-
-        template<class P, typename std::enable_if<std::is_constructible<value_type, P &&>::value>::type * = nullptr>
-        std::pair<iterator, bool> insert(P &&value) {
-            return hash_table_.emplace(std::forward<P>(value));
-        }
-
-        std::pair<iterator, bool> insert(value_type &&value) {
-            return hash_table_.insert(std::move(value));
-        }
-
-        iterator insert(const_iterator hint, const value_type &value) {
-            return hash_table_.insert(hint, value);
-        }
-
-        template<class P, typename std::enable_if<std::is_constructible<value_type, P &&>::value>::type * = nullptr>
-        iterator insert(const_iterator hint, P &&value) {
-            return hash_table_.emplace_hint(hint, std::forward<P>(value));
-        }
-
-        iterator insert(const_iterator hint, value_type &&value) {
-            return hash_table_.insert(hint, std::move(value));
-        }
-
-        template<class InputIt>
-        void insert(InputIt begin, InputIt end) {
-            hash_table_.insert(begin, end);
-        }
-
-        void insert(std::initializer_list<value_type> list) {
-            hash_table_.insert(list.begin(), list.end());
-        }
-
-        template<class... Args>
-        std::pair<iterator, bool> emplace(Args &&... args) {
-            return hash_table_.emplace(std::forward<Args>(args)...);
-        }
-
-        template<class... Args>
-        iterator emplace_hint(const_iterator hint, Args &&... args) {
-            return hash_table_.emplace_hint(hint, std::forward<Args>(args)...);
-        }
-
-        iterator erase(iterator position) {
-            return hash_table_.erase(position);
-        }
-
-        iterator erase(const_iterator position) {
-            return hash_table_.erase(position);
-        }
-
-        iterator erase(const_iterator begin, const_iterator end) {
-            return hash_table_.erase(begin, end);
-        }
-
-        size_type erase(const key_type &key) {
-            return hash_table_.erase(key);
-        }
-
-        void swap(unordered_set &other) {
-            other.hash_table_.swap(hash_table_);
-        }
-
-        size_type count(const key_type &key) const {
-            return hash_table_.count(key);
-        }
-
-        // TODO: One more methods of 'count'
-
-        iterator find(const key_type &key) {
-            return hash_table_.find(key);
-        }
-
-        const_iterator find(const key_type &key) const {
-            return hash_table_.find(key);
-        }
-
-        //TODO: Two more methods of find
-
-        bool contains(const key_type &key) {
-            return hash_table_.contains(key);
-        }
-
-        // TODO: One more methods of 'contains'
-
-        std::pair<iterator, iterator> equal_range(const key_type &key) {
-            return hash_table_.equal_range(key);
-        }
-
-        std::pair<const_iterator, const_iterator> equal_range(const key_type &key) const {
-            const_iterator founded = find(key);
-            return hash_table_.equal_range(key);
-        }
-
-        //TODO: Two more methods of equal_range
-
-        size_type bucket_count() const {
-            return hash_table_.bucket_count();
-        }
-
-        size_type max_bucket_count() const {
-            return hash_table_.max_bucket_count();
-        }
-
-        float load_factor() const {
-            return hash_table_.load_factor();
-        }
-
-        float max_load_factor() const {
-            return hash_table_.max_load_factor();
-        }
-
-        void max_load_factor(float load_factor) {
-            hash_table_.max_load_factor(load_factor);
-        }
-
-        void rehash(size_type new_capacity) {
-            hash_table_.rehash(new_capacity);
-        }
-
-        void reserve(size_type new_capacity) {
-            hash_table_.reserve(new_capacity);
+        bool operator()(const key_type &first_key, const key_type &second_key) const {
+            return key_equal_(first_key, second_key);
         }
 
         hasher hash_function() const {
-            return hash_table_.hash_function();
+            return key_hash_;
         }
 
         key_equal key_eq() const {
-            return hash_table_.key_eq();
+            return key_equal_;
+        }
+    };
+
+    template<class TKey,
+            class HashCompare,
+            class Allocator,
+            class GrowthPolicy>
+    class unordered_set_traits : public HashCompare {
+    private:
+        using size_type = typename GrowthPolicy::size_type;
+
+    public:
+        using key_compare = HashCompare;
+        using key_type = TKey;
+        using value_type = TKey;
+        using mutable_value_type = TKey;
+        using hasher = typename HashCompare::hasher;
+        using key_equal = typename HashCompare::key_equal;
+        using growth_policy = GrowthPolicy;
+        using allocator_type = Allocator;
+
+    private:
+        growth_policy growth_policy_;
+
+    public:
+        unordered_set_traits() = default;
+
+        explicit unordered_set_traits(const HashCompare &hash_traits)
+                : HashCompare(hash_traits), growth_policy_() {};
+
+        explicit unordered_set_traits(const GrowthPolicy &growth_policy)
+                : HashCompare(), growth_policy_(growth_policy) {};
+
+        unordered_set_traits(const HashCompare &hash_traits, const GrowthPolicy &growth_policy)
+                : HashCompare(hash_traits), growth_policy_(growth_policy) {}
+
+        unordered_set_traits(const unordered_set_traits &other)
+                : HashCompare(other),
+                  growth_policy_(other.growth_policy_) {}
+
+        unordered_set_traits(unordered_set_traits &&other) noexcept
+                : HashCompare(std::move(other)),
+                  growth_policy_(std::move(other.growth_policy_)) {}
+
+        unordered_set_traits &operator=(const unordered_set_traits &other) {
+            if (this != &other) {
+                HashCompare::operator=(other);
+                growth_policy_ = other.growth_policy_;
+            }
+            return *this;
         }
 
-        bool operator==(const unordered_set &other) const {
-            return hash_table_ == other.hash_table_;
+        unordered_set_traits &operator=(unordered_set_traits &&other) noexcept {
+            if (this != &other) {
+                HashCompare::operator=(std::move(other));
+                growth_policy_ = std::move(other.growth_policy_);
+            }
+            return *this;
         }
 
-        bool operator!=(const hash_table &other) const {
-            return hash_table_ != other.hash_table_;
+        template<typename Type>
+        const Type &select_key(const Type &key) const {
+            return key;
         }
 
-        void clear() {
-            hash_table_.clear();
+        size_type next_capacity(size_type current_capacity) const {
+            return growth_policy_(current_capacity);
+        }
+    };
+
+    template<class TKey,
+            class TValue,
+            class HashCompare,
+            class Allocator,
+            class GrowthPolicy>
+    class unordered_map_traits : public HashCompare {
+    private:
+        using size_type = typename GrowthPolicy::size_type;
+
+    public:
+        using key_compare = HashCompare;
+        using key_type = TKey;
+        using value_type = std::pair<const TKey, TValue>;
+        using mutable_value_type = std::pair<TKey, TValue>;
+        using hasher = typename HashCompare::hasher;
+        using key_equal = typename HashCompare::key_equal;
+        using growth_policy = GrowthPolicy;
+        using allocator_type = Allocator;
+
+    private:
+        growth_policy growth_policy_;
+
+    public:
+        unordered_map_traits() = default;
+
+        explicit unordered_map_traits(const HashCompare &hash_traits)
+                : HashCompare(hash_traits), growth_policy_() {};
+
+        explicit unordered_map_traits(const GrowthPolicy &growth_policy)
+                : HashCompare(), growth_policy_(growth_policy) {};
+
+        unordered_map_traits(const HashCompare &hash_traits, const GrowthPolicy &growth_policy)
+                : HashCompare(hash_traits), growth_policy_(growth_policy) {}
+
+        unordered_map_traits(const unordered_map_traits &other)
+                : HashCompare(other),
+                  growth_policy_(other.growth_policy_) {}
+
+        unordered_map_traits(unordered_map_traits &&other) noexcept
+                : HashCompare(std::move(other)),
+                  growth_policy_(std::move(other.growth_policy_)) {}
+
+        unordered_map_traits &operator=(const unordered_map_traits &other) {
+            if (this != &other) {
+                HashCompare::operator=(other);
+                growth_policy_ = other.growth_policy_;
+            }
+            return *this;
+        }
+
+        unordered_map_traits &operator=(unordered_map_traits &&other) noexcept {
+            if (this != &other) {
+                HashCompare::operator=(std::move(other));
+                growth_policy_ = std::move(other.growth_policy_);
+            }
+            return *this;
+        }
+
+        template<typename TFirst, typename TSecond>
+        const TFirst &select_key(const std::pair<TFirst, TSecond> &pair) const {
+            return pair.first;
+        }
+
+        size_type next_capacity(size_type current_capacity) const {
+            return growth_policy_(current_capacity);
         }
     };
 
@@ -1840,28 +1635,12 @@ namespace ld {
             class Allocator = std::allocator<std::pair<const TKey, TValue>>,
             class GrowthPolicy = power_of_two_growth_policy>
     class unordered_map {
-
-        class key_selector {
-        public:
-            using key_type = TKey;
-            using value_type = TValue;
-
-        public:
-            key_type operator()(std::pair<key_type, value_type> &&p) const noexcept {
-                return std::move(p.first);
-            }
-
-            const key_type &operator()(const std::pair<key_type, value_type> &p) const noexcept {
-                return p.first;
-            }
-        };
-
-
-        using hash_table = detail::hash_table<std::pair<const TKey, TValue>,
-                key_selector, KeyHash, KeyEqual, Allocator, GrowthPolicy>;
+        using hash_table = detail::hash_table<unordered_map_traits<TKey, TValue,
+                key_compare_traits<TKey, KeyHash, KeyEqual>,
+                Allocator, GrowthPolicy>>;
 
     public:
-        using key_type = typename hash_table::key_type;
+        using key_type = TKey;
         using value_type = typename hash_table::value_type;
         using mapped_type = TValue;
 
@@ -2205,6 +1984,326 @@ namespace ld {
             hash_table_.clear();
         }
     };
+
+    template<class TKey,
+            class KeyHash = std::hash<TKey>,
+            class KeyEqual = std::equal_to<TKey>,
+            class Allocator = std::allocator<TKey>,
+            class GrowthPolicy = power_of_two_growth_policy>
+    class unordered_set {
+        using hash_table = detail::hash_table<unordered_set_traits<TKey, key_compare_traits<TKey, KeyHash, KeyEqual>,
+                Allocator, GrowthPolicy>>;
+
+    public:
+        using key_type = TKey;
+        using value_type = typename hash_table::value_type;
+
+        using size_type = typename hash_table::size_type;
+        using difference_type = typename hash_table::difference_type;
+
+        using hasher = typename hash_table::hasher;
+        using key_equal = typename hash_table::key_equal;
+        using allocator_type = typename hash_table::allocator_type;
+
+        using reference = typename hash_table::reference;
+        using const_reference = typename hash_table::const_reference;
+
+        using pointer = typename hash_table::pointer;
+        using const_pointer = typename hash_table::const_pointer;
+
+        using iterator = typename hash_table::iterator;
+        using const_iterator = typename hash_table::const_iterator;
+
+    private:
+        hash_table hash_table_;
+
+    public:
+        unordered_set()
+                :
+                hash_table_() {}
+
+        explicit unordered_set(size_type capacity,
+                               const hasher &key_hash_function = hasher{},
+                               const key_equal &key_equal_function = key_equal{},
+                               const allocator_type &allocator = allocator_type{})
+                : hash_table_(capacity, key_hash_function, key_equal_function, allocator) {}
+
+        unordered_set(size_type capacity, const allocator_type &allocator)
+                : hash_table_(capacity, hasher{}, key_equal{}, allocator) {}
+
+        unordered_set(size_type capacity, const hasher &key_hash_function, const allocator_type &allocator)
+                : hash_table_(capacity, key_hash_function, key_equal{}, allocator) {}
+
+        explicit unordered_set(const allocator_type &allocator)
+                : hash_table_(0, hasher{}, key_equal{}, allocator) {}
+
+        template<typename InputIt>
+        unordered_set(InputIt begin, InputIt end,
+                      size_type capacity = 0,
+                      const hasher &key_hash_function = hasher{},
+                      const key_equal &key_equal_function = key_equal{},
+                      const allocator_type &allocator = allocator_type{})
+                : hash_table_(begin, end, capacity, key_hash_function, key_equal_function, allocator) {}
+
+        template<typename InputIt>
+        unordered_set(InputIt begin, InputIt end,
+                      size_type capacity = 0,
+                      const allocator_type &allocator = allocator_type{})
+                : hash_table_(begin, end, capacity, hasher{}, key_equal{}, allocator) {}
+
+        template<typename InputIt>
+        unordered_set(InputIt begin, InputIt end,
+                      size_type capacity = 0,
+                      const hasher &key_hash_function = hasher{},
+                      const allocator_type &allocator = allocator_type{})
+                : hash_table_(begin, end, capacity, key_hash_function, key_equal{}, allocator) {}
+
+        unordered_set(std::initializer_list<value_type> list,
+                      size_type capacity = 0,
+                      const hasher &key_hash_function = hasher{},
+                      const key_equal &key_equal_function = key_equal{},
+                      const allocator_type &allocator = allocator_type{})
+                : hash_table_(list.begin(), list.end(), capacity, key_hash_function, key_equal_function,
+                              allocator) {}
+
+        unordered_set(std::initializer_list<value_type> list,
+                      size_type capacity = 0,
+                      const allocator_type &allocator = allocator_type{})
+                : hash_table_(list.begin(), list.end(), capacity, hasher{}, key_equal{}, allocator) {}
+
+        unordered_set(std::initializer_list<value_type> list,
+                      size_type capacity = 0,
+                      const hasher &key_hash_function = hasher{},
+                      const allocator_type &allocator = allocator_type{})
+                : hash_table_(list.begin(), list.end(), capacity, key_hash_function, key_equal{}, allocator) {}
+
+        unordered_set(const unordered_set &other) noexcept(std::is_nothrow_copy_constructible<hash_table>::value)
+                : hash_table_(other.hash_table_) {}
+
+        unordered_set(const unordered_set &other, const allocator_type &allocator)
+                : hash_table_(other.hash_table_, allocator) {}
+
+        unordered_set(unordered_set &&other) noexcept(std::is_nothrow_move_constructible<hash_table>::value)
+                : hash_table_(std::move(other.hash_table_)) {}
+
+        unordered_set(unordered_set &&other, const allocator_type &allocator)
+                : hash_table_(std::move(other.hash_table_), allocator) {}
+
+        unordered_set &operator=(const unordered_set &other) {
+            hash_table_ = other.hash_table_;
+            return *this;
+        }
+
+        unordered_set &
+        operator=(unordered_set &&other) noexcept(std::is_nothrow_move_assignable<hash_table>::value) {
+            hash_table_ = std::move(other.hash_table_);
+            return *this;
+        }
+
+        unordered_set &operator=(std::initializer_list<value_type> list) {
+            hash_table_ = list;
+            return *this;
+        }
+
+        allocator_type get_allocator() const {
+            return hash_table_.get_allocator();
+        }
+
+        iterator begin() noexcept {
+            return hash_table_.begin();
+        }
+
+        iterator end() noexcept {
+            return hash_table_.end();
+        }
+
+        const_iterator begin() const noexcept {
+            return hash_table_.begin();
+        }
+
+        const_iterator end() const noexcept {
+            return hash_table_.end();
+        }
+
+        const_iterator cbegin() const noexcept {
+            return hash_table_.cbegin();
+        }
+
+        const_iterator cend() const noexcept {
+            return hash_table_.cend();
+        }
+
+        iterator rbegin() noexcept {
+            return hash_table_.rbegin();
+        }
+
+        iterator rend() noexcept {
+            return hash_table_.rend();
+        }
+
+        const_iterator rbegin() const noexcept {
+            return hash_table_.rbegin();
+        }
+
+        const_iterator rend() const noexcept {
+            return hash_table_.rend();
+        }
+
+        bool empty() const noexcept {
+            return hash_table_.empty();
+        }
+
+        size_type size() const noexcept {
+            return hash_table_.size();
+        }
+
+        std::pair<iterator, bool> insert(const value_type &value) {
+            return hash_table_.insert(value);
+        }
+
+        template<class P, typename std::enable_if<std::is_constructible<value_type, P &&>::value>::type * = nullptr>
+        std::pair<iterator, bool> insert(P &&value) {
+            return hash_table_.emplace(std::forward<P>(value));
+        }
+
+        std::pair<iterator, bool> insert(value_type &&value) {
+            return hash_table_.insert(std::move(value));
+        }
+
+        iterator insert(const_iterator hint, const value_type &value) {
+            return hash_table_.insert(hint, value);
+        }
+
+        template<class P, typename std::enable_if<std::is_constructible<value_type, P &&>::value>::type * = nullptr>
+        iterator insert(const_iterator hint, P &&value) {
+            return hash_table_.emplace_hint(hint, std::forward<P>(value));
+        }
+
+        iterator insert(const_iterator hint, value_type &&value) {
+            return hash_table_.insert(hint, std::move(value));
+        }
+
+        template<class InputIt>
+        void insert(InputIt begin, InputIt end) {
+            hash_table_.insert(begin, end);
+        }
+
+        void insert(std::initializer_list<value_type> list) {
+            hash_table_.insert(list.begin(), list.end());
+        }
+
+        template<class... Args>
+        std::pair<iterator, bool> emplace(Args &&... args) {
+            return hash_table_.emplace(std::forward<Args>(args)...);
+        }
+
+        template<class... Args>
+        iterator emplace_hint(const_iterator hint, Args &&... args) {
+            return hash_table_.emplace_hint(hint, std::forward<Args>(args)...);
+        }
+
+        iterator erase(iterator position) {
+            return hash_table_.erase(position);
+        }
+
+        iterator erase(const_iterator position) {
+            return hash_table_.erase(position);
+        }
+
+        iterator erase(const_iterator begin, const_iterator end) {
+            return hash_table_.erase(begin, end);
+        }
+
+        size_type erase(const key_type &key) {
+            return hash_table_.erase(key);
+        }
+
+        void swap(unordered_set &other) {
+            other.hash_table_.swap(hash_table_);
+        }
+
+        size_type count(const key_type &key) const {
+            return hash_table_.count(key);
+        }
+
+        // TODO: One more methods of 'count'
+
+        iterator find(const key_type &key) {
+            return hash_table_.find(key);
+        }
+
+        const_iterator find(const key_type &key) const {
+            return hash_table_.find(key);
+        }
+
+        //TODO: Two more methods of find
+
+        bool contains(const key_type &key) {
+            return hash_table_.contains(key);
+        }
+
+        // TODO: One more methods of 'contains'
+
+        std::pair<iterator, iterator> equal_range(const key_type &key) {
+            return hash_table_.equal_range(key);
+        }
+
+        std::pair<const_iterator, const_iterator> equal_range(const key_type &key) const {
+            const_iterator founded = find(key);
+            return hash_table_.equal_range(key);
+        }
+
+        //TODO: Two more methods of equal_range
+
+        size_type bucket_count() const {
+            return hash_table_.bucket_count();
+        }
+
+        size_type max_bucket_count() const {
+            return hash_table_.max_bucket_count();
+        }
+
+        float load_factor() const {
+            return hash_table_.load_factor();
+        }
+
+        float max_load_factor() const {
+            return hash_table_.max_load_factor();
+        }
+
+        void max_load_factor(float load_factor) {
+            hash_table_.max_load_factor(load_factor);
+        }
+
+        void rehash(size_type new_capacity) {
+            hash_table_.rehash(new_capacity);
+        }
+
+        void reserve(size_type new_capacity) {
+            hash_table_.reserve(new_capacity);
+        }
+
+        hasher hash_function() const {
+            return hash_table_.hash_function();
+        }
+
+        key_equal key_eq() const {
+            return hash_table_.key_eq();
+        }
+
+        bool operator==(const unordered_set &other) const {
+            return hash_table_ == other.hash_table_;
+        }
+
+        bool operator!=(const hash_table &other) const {
+            return hash_table_ != other.hash_table_;
+        }
+
+        void clear() {
+            hash_table_.clear();
+        }
+    };
+
 
     template<class TKey,
             class TValue,

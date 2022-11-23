@@ -985,7 +985,7 @@ namespace ld {
                        const allocator_type &allocator = allocator_type{})
                     : data_(capacity, allocator),
                       traits_(key_compare(key_hash_function, key_equal_function)) {
-                insert(list.begin(), list.end());
+                insert(list);
             }
 
             hash_table(const hash_table &other)
@@ -1043,7 +1043,7 @@ namespace ld {
 
             hash_table &operator=(std::initializer_list<value_type> list) noexcept {
                 clear();
-                insert(list.begin(), list.end());
+                insert(list);
                 return *this;
             }
 
@@ -1077,7 +1077,9 @@ namespace ld {
             }
 
             void insert(std::initializer_list<value_type> list) {
-                insert(list.begin(), list.end());
+                for(auto it = list.begin(); it != list.end(); ++it) {
+                    _insert(std::move(*it));
+                }
             }
 
             template<typename ...Args>
@@ -1840,7 +1842,7 @@ namespace ld {
         }
 
         void insert(std::initializer_list<value_type> list) {
-            hash_table_.insert(list.begin(), list.end());
+            hash_table_.insert(list);
         }
 
         template<class... Args>
@@ -2196,7 +2198,7 @@ namespace ld {
         }
 
         void insert(std::initializer_list<value_type> list) {
-            hash_table_.insert(list.begin(), list.end());
+            hash_table_.insert(list);
         }
 
         template<class... Args>

@@ -1461,14 +1461,20 @@ namespace ld {
     public:
         key_compare_traits() = default;
 
-        explicit key_compare_traits(const hasher &key_hash)
-                : key_hash_(key_hash), key_equal_() {}
+        explicit key_compare_traits(const hasher &key_hash_arg) noexcept(
+        std::is_nothrow_copy_constructible_v<hasher> &&
+        std::is_nothrow_default_constructible_v<key_equal>)
+                : key_hash_(key_hash_arg), key_equal_() {}
 
-        explicit key_compare_traits(const key_equal &key_equal)
-                : key_hash_(), key_equal_(key_equal) {}
+        explicit key_compare_traits(const key_equal &key_equal_arg) noexcept(
+        std::is_nothrow_copy_constructible_v<key_equal> &&
+        std::is_nothrow_default_constructible_v<hasher>)
+                : key_hash_(), key_equal_(key_equal_arg) {}
 
-        key_compare_traits(const hasher &key_hash, const key_equal &key_equal)
-                : key_hash_(key_hash), key_equal_(key_equal) {}
+        key_compare_traits(const hasher &key_hash_arg, const key_equal &key_equal_arg) noexcept(
+        std::is_nothrow_default_constructible_v<hasher> &&
+        std::is_nothrow_default_constructible_v<key_equal>)
+                : key_hash_(key_hash_arg), key_equal_(key_equal_arg) {}
 
         key_compare_traits(const key_compare_traits &other) = default;
 
@@ -1521,24 +1527,36 @@ namespace ld {
     public:
         unordered_set_traits() = default;
 
-        explicit unordered_set_traits(const HashCompare &hash_traits)
+        explicit unordered_set_traits(const HashCompare &hash_traits) noexcept(
+        std::is_nothrow_copy_constructible_v<key_compare> &&
+        std::is_nothrow_default_constructible_v<GrowthPolicy>)
                 : HashCompare(hash_traits), growth_policy_() {};
 
-        explicit unordered_set_traits(const GrowthPolicy &growth_policy)
+        explicit unordered_set_traits(const GrowthPolicy &growth_policy) noexcept(
+        std::is_nothrow_default_constructible_v<key_compare> &&
+        std::is_nothrow_copy_constructible_v<GrowthPolicy>)
                 : HashCompare(), growth_policy_(growth_policy) {};
 
-        unordered_set_traits(const HashCompare &hash_traits, const GrowthPolicy &growth_policy)
+        unordered_set_traits(const HashCompare &hash_traits, const GrowthPolicy &growth_policy) noexcept(
+        std::is_nothrow_copy_constructible_v<key_compare> &&
+        std::is_nothrow_copy_constructible_v<GrowthPolicy>)
                 : HashCompare(hash_traits), growth_policy_(growth_policy) {}
 
-        unordered_set_traits(const unordered_set_traits &other)
+        unordered_set_traits(const unordered_set_traits &other) noexcept(
+        std::is_nothrow_copy_constructible_v<key_compare> &&
+        std::is_nothrow_copy_constructible_v<GrowthPolicy>)
                 : HashCompare(other),
                   growth_policy_(other.growth_policy_) {}
 
-        unordered_set_traits(unordered_set_traits &&other) noexcept
+        unordered_set_traits(unordered_set_traits &&other) noexcept(
+        std::is_nothrow_move_constructible_v<key_compare> &&
+        std::is_nothrow_move_constructible_v<GrowthPolicy>)
                 : HashCompare(std::move(other)),
                   growth_policy_(std::move(other.growth_policy_)) {}
 
-        unordered_set_traits &operator=(const unordered_set_traits &other) {
+        unordered_set_traits &operator=(const unordered_set_traits &other) noexcept(
+        std::is_nothrow_copy_assignable_v<key_compare> &&
+        std::is_nothrow_copy_assignable_v<GrowthPolicy>) {
             if (this != &other) {
                 HashCompare::operator=(other);
                 growth_policy_ = other.growth_policy_;
@@ -1546,7 +1564,9 @@ namespace ld {
             return *this;
         }
 
-        unordered_set_traits &operator=(unordered_set_traits &&other) noexcept {
+        unordered_set_traits &operator=(unordered_set_traits &&other) noexcept(
+        std::is_nothrow_move_assignable_v<key_compare> &&
+        std::is_nothrow_move_assignable_v<GrowthPolicy>) {
             if (this != &other) {
                 HashCompare::operator=(std::move(other));
                 growth_policy_ = std::move(other.growth_policy_);
@@ -1589,24 +1609,36 @@ namespace ld {
     public:
         unordered_map_traits() = default;
 
-        explicit unordered_map_traits(const HashCompare &hash_traits)
+        explicit unordered_map_traits(const HashCompare &hash_traits) noexcept(
+        std::is_nothrow_copy_constructible_v<key_compare> &&
+        std::is_nothrow_default_constructible_v<GrowthPolicy>)
                 : HashCompare(hash_traits), growth_policy_() {};
 
-        explicit unordered_map_traits(const GrowthPolicy &growth_policy)
+        explicit unordered_map_traits(const GrowthPolicy &growth_policy) noexcept(
+        std::is_nothrow_default_constructible_v<key_compare> &&
+        std::is_nothrow_copy_constructible_v<GrowthPolicy>)
                 : HashCompare(), growth_policy_(growth_policy) {};
 
-        unordered_map_traits(const HashCompare &hash_traits, const GrowthPolicy &growth_policy)
+        unordered_map_traits(const HashCompare &hash_traits, const GrowthPolicy &growth_policy) noexcept(
+        std::is_nothrow_copy_constructible_v<key_compare> &&
+        std::is_nothrow_copy_constructible_v<GrowthPolicy>)
                 : HashCompare(hash_traits), growth_policy_(growth_policy) {}
 
-        unordered_map_traits(const unordered_map_traits &other)
+        unordered_map_traits(const unordered_map_traits &other) noexcept(
+        std::is_nothrow_copy_constructible_v<key_compare> &&
+        std::is_nothrow_copy_constructible_v<GrowthPolicy>)
                 : HashCompare(other),
                   growth_policy_(other.growth_policy_) {}
 
-        unordered_map_traits(unordered_map_traits &&other) noexcept
-                : HashCompare(std::move(other)),
-                  growth_policy_(std::move(other.growth_policy_)) {}
+        unordered_map_traits(unordered_map_traits &&other) noexcept(
+        std::is_nothrow_move_constructible_v<key_compare> &&
+                std::is_nothrow_move_constructible_v<GrowthPolicy>)
+        : HashCompare(std::move(other)),
+                growth_policy_(std::move(other.growth_policy_)) {}
 
-        unordered_map_traits &operator=(const unordered_map_traits &other) {
+        unordered_map_traits &operator=(const unordered_map_traits &other) noexcept(
+        std::is_nothrow_copy_assignable_v<key_compare> &&
+        std::is_nothrow_copy_assignable_v<GrowthPolicy>) {
             if (this != &other) {
                 HashCompare::operator=(other);
                 growth_policy_ = other.growth_policy_;
@@ -1614,7 +1646,9 @@ namespace ld {
             return *this;
         }
 
-        unordered_map_traits &operator=(unordered_map_traits &&other) noexcept {
+        unordered_map_traits &operator=(unordered_map_traits &&other) noexcept(
+        std::is_nothrow_move_assignable_v<key_compare> &&
+        std::is_nothrow_move_assignable_v<GrowthPolicy>) {
             if (this != &other) {
                 HashCompare::operator=(std::move(other));
                 growth_policy_ = std::move(other.growth_policy_);

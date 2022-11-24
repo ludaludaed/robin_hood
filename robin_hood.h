@@ -1472,17 +1472,25 @@ namespace ld {
                 : key_hash_(), key_equal_(key_equal_arg) {}
 
         key_compare_traits(const hasher &key_hash_arg, const key_equal &key_equal_arg) noexcept(
-        std::is_nothrow_default_constructible_v<hasher> &&
-        std::is_nothrow_default_constructible_v<key_equal>)
+        std::is_nothrow_copy_constructible_v<hasher> &&
+        std::is_nothrow_copy_constructible_v<key_equal>)
                 : key_hash_(key_hash_arg), key_equal_(key_equal_arg) {}
 
-        key_compare_traits(const key_compare_traits &other) = default;
+        key_compare_traits(const key_compare_traits &other) noexcept(
+        std::is_nothrow_copy_constructible_v<hasher> &&
+        std::is_nothrow_copy_constructible_v<key_equal>) = default;
 
-        key_compare_traits(key_compare_traits &&other) noexcept = default;
+        key_compare_traits(key_compare_traits &&other) noexcept(
+        std::is_nothrow_move_constructible_v<hasher> &&
+        std::is_nothrow_move_constructible_v<key_equal>) = default;
 
-        key_compare_traits &operator=(const key_compare_traits &other) = default;
+        key_compare_traits &operator=(const key_compare_traits &other) noexcept(
+        std::is_nothrow_copy_assignable_v<hasher> &&
+        std::is_nothrow_copy_assignable_v<key_equal>) = default;
 
-        key_compare_traits &operator=(key_compare_traits &&other) noexcept = default;
+        key_compare_traits &operator=(key_compare_traits &&other) noexcept(
+        std::is_nothrow_move_assignable_v<hasher> &&
+        std::is_nothrow_move_assignable_v<key_equal>) = default;
 
         virtual ~key_compare_traits() = default;
 
@@ -1632,9 +1640,9 @@ namespace ld {
 
         unordered_map_traits(unordered_map_traits &&other) noexcept(
         std::is_nothrow_move_constructible_v<key_compare> &&
-                std::is_nothrow_move_constructible_v<GrowthPolicy>)
-        : HashCompare(std::move(other)),
-                growth_policy_(std::move(other.growth_policy_)) {}
+        std::is_nothrow_move_constructible_v<GrowthPolicy>)
+                : HashCompare(std::move(other)),
+                  growth_policy_(std::move(other.growth_policy_)) {}
 
         unordered_map_traits &operator=(const unordered_map_traits &other) noexcept(
         std::is_nothrow_copy_assignable_v<key_compare> &&

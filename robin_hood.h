@@ -525,10 +525,12 @@ namespace ld {
 
                 array_iterator &operator=(const array_iterator &other) {
                     data_ = other.data_;
+                    return *this;
                 }
 
                 array_iterator &operator=(pointer other) {
                     data_ = other;
+                    return *this;
                 }
 
                 reference operator*() const {
@@ -1359,6 +1361,7 @@ namespace ld {
                     first_ = other.first_;
                     last_ = other.last_;
                     data_ = other.data_;
+                    return *this;
                 }
 
             public:

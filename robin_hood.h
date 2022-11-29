@@ -1338,23 +1338,20 @@ namespace ld {
                 node_pointer data_;
 
                 explicit hash_table_iterator(node_pointer data, node_pointer first, node_pointer last)
-                        :
-                        first_(first),
-                        last_(last),
-                        data_(data) {}
+                        : first_(first),
+                          last_(last),
+                          data_(data) {}
 
             public:
                 hash_table_iterator()
-                        :
-                        first_(nullptr),
-                        last_(nullptr),
-                        data_(nullptr) {}
+                        : first_(nullptr),
+                          last_(nullptr),
+                          data_(nullptr) {}
 
                 hash_table_iterator(const hash_table_iterator &other)
-                        :
-                        first_(other.first_),
-                        last_(other.last_),
-                        data_(other.data_) {}
+                        : first_(other.first_),
+                          last_(other.last_),
+                          data_(other.data_) {}
 
 
                 hash_table_iterator &operator=(const hash_table_iterator &other) {

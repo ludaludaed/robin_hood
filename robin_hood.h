@@ -95,6 +95,7 @@ namespace ld {
         template<typename TValue, typename Allocator = std::allocator<TValue>>
         class array {
             static_assert(std::is_default_constructible<TValue>::value);
+            static_assert(std::is_same<TValue, typename std::allocator_traits<Allocator>::value_type>::value);
 
             template<typename TItem>
             class array_iterator;

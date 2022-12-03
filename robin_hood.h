@@ -629,7 +629,7 @@ namespace ld {
         };
 
         template<typename TValue>
-        class node {
+        class robin_hood_node {
         public:
             using hash_type = size_t;
             using value_type = TValue;
@@ -645,18 +645,18 @@ namespace ld {
             storage value_;
 
         public:
-            node()
+            robin_hood_node()
                     : empty_(kEmptyMarker),
                       hash_(kDefaultHash) {}
 
             template<typename ...Args>
-            explicit node(hash_type hash, Args &&...args)
+            explicit robin_hood_node(hash_type hash, Args &&...args)
                     : hash_(hash),
                       empty_(kNoEmptyMarker) {
                 value_.construct(std::forward<Args>(args)...);
             }
 
-            node(const node &other) noexcept(std::is_nothrow_copy_constructible_v<value_type>)
+            robin_hood_node(const robin_hood_node &other) noexcept(std::is_nothrow_copy_constructible_v<value_type>)
                     : empty_(other.empty_),
                       hash_(other.hash_) {
                 if (!other.empty()) {
@@ -664,7 +664,7 @@ namespace ld {
                 }
             }
 
-            node(node &&other) noexcept(std::is_nothrow_move_constructible_v<value_type>)
+            robin_hood_node(robin_hood_node &&other) noexcept(std::is_nothrow_move_constructible_v<value_type>)
                     : empty_(other.empty_),
                       hash_(other.hash_) {
                 if (!other.empty()) {
@@ -673,11 +673,11 @@ namespace ld {
                 other.clear();
             }
 
-            ~node() {
+            ~robin_hood_node() {
                 clear();
             }
 
-            node &operator=(const node &other) {
+            robin_hood_node &operator=(const robin_hood_node &other) {
                 clear();
                 if (!other.empty()) {
                     value_.construct(*other.value_);
@@ -687,7 +687,8 @@ namespace ld {
                 return *this;
             }
 
-            node &operator=(node &&other) noexcept(std::is_nothrow_move_constructible<value_type>::value) {
+            robin_hood_node &
+            operator=(robin_hood_node &&other) noexcept(std::is_nothrow_move_constructible<value_type>::value) {
                 clear();
                 if (!other.empty()) {
                     value_.construct(std::move(*other.value_));
@@ -716,7 +717,7 @@ namespace ld {
                 hash_ = kDefaultHash;
             }
 
-            void swap(node &other) {
+            void swap(robin_hood_node &other) {
                 if (!other.empty() && !empty()) {
                     value_type temp_value = std::move(other.value());
                     other.value_.construct(std::move(value()));
@@ -754,7 +755,7 @@ namespace ld {
 
             using traits_type = Traits;
             using key_compare = typename Traits::key_compare;
-            using node = node<typename Traits::mutable_value_type>;
+            using node = robin_hood_node<typename Traits::mutable_value_type>;
             using node_allocator = typename std::allocator_traits<typename Traits::allocator_type>::template rebind_alloc<node>;
             using array = array<node, node_allocator>;
             using node_pointer = typename array::pointer;
